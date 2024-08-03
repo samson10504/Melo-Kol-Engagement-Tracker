@@ -2,7 +2,7 @@
 
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -10,10 +10,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { ThumbsUp, Eye, Coins, RefreshCw, UserPlus, UserMinus, Calendar, Settings, Filter, PlusCircle } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ThumbsUp, Eye, Coins, RefreshCw, UserPlus, UserMinus } from 'lucide-react';
 import { mockPosts, mockKols } from '@/data/mockData';
 import { calculateTokens, formatDate, getKolName } from '@/lib/utils';
 import PostCard from './PostCard';
@@ -47,20 +46,16 @@ export default function KOLTracker() {
     showAlert('Post created successfully', 'success');
   };
 
-  const handleUpdatePost = (id, likes, views) => {
-    const updatedPosts = posts.map(post => 
-      post.id === id ? { 
-        ...post, 
-        counts: [...post.counts, { date: new Date().toISOString().split('T')[0], likes: parseInt(likes), views: parseInt(views) }] 
-      } : post
+  const handleUpdatePost = useCallback((id, newCounts) => {
+    setPosts(prevPosts => 
+      prevPosts.map(post => 
+        post.id === id ? { ...post, counts: newCounts } : post
+      )
     );
-    setPosts(updatedPosts);
-    showAlert('Post updated successfully', 'success');
-  };
+  }, []);
 
   const handleDeletePost = (id) => {
-    const updatedPosts = posts.filter(post => post.id !== id);
-    setPosts(updatedPosts);
+    setPosts(posts.filter(post => post.id !== id));
     showAlert('Post deleted successfully', 'success');
   };
 
@@ -77,19 +72,38 @@ export default function KOLTracker() {
   };
 
   const handleDeleteKol = (id) => {
-    const updatedKols = kols.filter(kol => kol.id !== id);
-    setKols(updatedKols);
+    setKols(kols.filter(kol => kol.id !== id));
     showAlert('KOL deleted successfully', 'success');
   };
 
-  const filterPosts = (postsToFilter) => {
-    return postsToFilter.filter(post => {
+  const filteredPosts = useMemo(() => {
+    return posts.filter(post => {
       const kolMatch = selectedKol === 'all' || post.kolId === selectedKol;
       const dateMatch = (!dateFilter.start || new Date(post.creation_date) >= new Date(dateFilter.start)) &&
                         (!dateFilter.end || new Date(post.creation_date) <= new Date(dateFilter.end));
       return kolMatch && dateMatch;
     });
-  };
+  }, [posts, selectedKol, dateFilter]);
+
+  const totalEngagement = useMemo(() => {
+    return filteredPosts.reduce((total, post) => {
+      const latestCount = post.counts[post.counts.length - 1];
+      if (!latestCount) return total;
+
+      const postTokens = calculateTokens(
+        latestCount.likes,
+        latestCount.views,
+        tokenSettings.likesToToken,
+        tokenSettings.viewsToToken
+      );
+
+      return {
+        likes: total.likes + latestCount.likes,
+        views: total.views + latestCount.views,
+        tokens: total.tokens + postTokens
+      };
+    }, { likes: 0, views: 0, tokens: 0 });
+  }, [filteredPosts, tokenSettings]);
 
   const fetchUpdates = async () => {
     showAlert('Fetching updates from backend...', 'info');
@@ -99,15 +113,15 @@ export default function KOLTracker() {
         const creationDate = new Date(post.creation_date);
         const daysSinceCreation = Math.floor((now - creationDate) / (1000 * 60 * 60 * 24));
         
-        if (daysSinceCreation >= 7 && post.counts.length === 0) {
+        if (daysSinceCreation >= 14 && post.counts.length === 0) {
           post.counts.push({
-            date: new Date(creationDate.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+            date: new Date(creationDate.getTime() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
             likes: Math.floor(Math.random() * 1000),
             views: Math.floor(Math.random() * 5000)
           });
-        } else if (daysSinceCreation >= 30 && post.counts.length === 1) {
+        } else if (daysSinceCreation >= 28 && post.counts.length === 1) {
           post.counts.push({
-            date: new Date(creationDate.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+            date: new Date(creationDate.getTime() + 28 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
             likes: Math.floor(Math.random() * 2000),
             views: Math.floor(Math.random() * 10000)
           });
@@ -119,30 +133,35 @@ export default function KOLTracker() {
     }, 2000);
   };
 
-  const TotalEngagement = ({ likes, views, tokens }) => (
-    <Card>
-      <CardHeader>
-        <CardTitle>Total Engagement</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex items-center space-x-2">
-          <ThumbsUp className="text-green-500" />
-          <span>Likes:</span>
-          <span className="font-bold">{likes}</span>
-        </div>
-        <div className="flex items-center space-x-2">
-          <Eye className="text-blue-500" />
-          <span>Views:</span>
-          <span className="font-bold">{views}</span>
-        </div>
-        <div className="flex items-center space-x-2">
-          <Coins className="text-yellow-500" />
-          <span>Tokens:</span>
-          <span className="font-bold">{tokens}</span>
-        </div>
-      </CardContent>
-    </Card>
-  );
+  const fetchPostUpdate = useCallback((postId: number) => {
+    setPosts(prevPosts => prevPosts.map(post => {
+      if (post.id === postId) {
+        const latestCount = post.counts[post.counts.length - 1] || { likes: 0, views: 0 };
+        const newLikes = latestCount.likes + Math.floor(Math.random() * 100);
+        const newViews = latestCount.views + Math.floor(Math.random() * 500);
+        const newTokens = calculateTokens(newLikes, newViews, tokenSettings.likesToToken, tokenSettings.viewsToToken);
+        
+        return {
+          ...post,
+          counts: [...post.counts, { date: new Date().toISOString(), likes: newLikes, views: newViews }],
+          lastFetch: {
+            date: new Date().toISOString(),
+            likes: newLikes,
+            views: newViews,
+            tokens: newTokens
+          }
+        };
+      }
+      return post;
+    }));
+    showAlert(`Post ${postId} updated successfully`, 'success');
+  }, [tokenSettings]);
+
+  const fetchAllUpdates = async () => {
+    showAlert('Fetching updates for all posts...', 'info');
+    posts.forEach(post => fetchPostUpdate(post.id));
+    showAlert('All posts updated successfully', 'success');
+  };
 
   return (
     <div className="container mx-auto p-4">
@@ -156,11 +175,28 @@ export default function KOLTracker() {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <TotalEngagement 
-          likes={filterPosts(posts).reduce((sum, post) => sum + (post.counts[post.counts.length - 1]?.likes || 0), 0)}
-          views={filterPosts(posts).reduce((sum, post) => sum + (post.counts[post.counts.length - 1]?.views || 0), 0)}
-          tokens={filterPosts(posts).reduce((sum, post) => sum + calculateTokens(post.counts[post.counts.length - 1]?.likes || 0, post.counts[post.counts.length - 1]?.views || 0, tokenSettings.likesToToken, tokenSettings.viewsToToken), 0)}
-        />
+        <Card>
+          <CardHeader>
+            <CardTitle>Total Engagement</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center space-x-2">
+              <ThumbsUp className="text-green-500" />
+              <span>Likes:</span>
+              <span className="font-bold">{totalEngagement.likes}</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Eye className="text-blue-500" />
+              <span>Views:</span>
+              <span className="font-bold">{totalEngagement.views}</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Coins className="text-yellow-500" />
+              <span>Tokens:</span>
+              <span className="font-bold">{totalEngagement.tokens}</span>
+            </div>
+          </CardContent>
+        </Card>
         <Card>
           <CardHeader>
             <CardTitle>Filters</CardTitle>
@@ -224,8 +260,8 @@ export default function KOLTracker() {
         </Card>
       </div>
 
-      <Button onClick={fetchUpdates} className="mb-6">
-        <RefreshCw className="mr-2 h-4 w-4" /> Fetch Updates
+      <Button onClick={fetchAllUpdates} className="mb-6">
+        <RefreshCw className="mr-2 h-4 w-4" /> Fetch All
       </Button>
 
       <Tabs defaultValue="posts" className="space-y-4">
@@ -239,7 +275,7 @@ export default function KOLTracker() {
         <TabsContent value="posts">
           <ScrollArea className="h-[600px] rounded-md border p-4">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filterPosts(posts).map((post) => (
+              {filteredPosts.map((post) => (
                 <PostCard 
                   key={post.id} 
                   post={post} 
@@ -247,6 +283,7 @@ export default function KOLTracker() {
                   tokenSettings={tokenSettings}
                   onUpdate={handleUpdatePost}
                   onDelete={handleDeletePost}
+                  onFetch={fetchPostUpdate}
                 />
               ))}
             </div>
@@ -332,7 +369,7 @@ export default function KOLTracker() {
 
         <TabsContent value="analytics">
           <Analytics 
-            posts={filterPosts(posts)}
+            posts={filteredPosts}
             kols={kols}
             tokenSettings={tokenSettings}
           />
