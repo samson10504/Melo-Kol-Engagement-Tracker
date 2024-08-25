@@ -19,10 +19,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const { url, kol_id, creation_date, counts } = req.body;
       const countsString = JSON.stringify(counts);
       const { rows } = await sql`
-        'INSERT INTO posts (url, kol_id, creation_date, counts) VALUES ($1, $2, $3, $4) RETURNING *',
-        [url, kol_id, creation_date, countsString]
+        INSERT INTO posts (url, kol_id, creation_date, counts)
+        VALUES (${url}, ${kol_id}, ${creation_date}, ${countsString})
+        RETURNING *
       `;
-      const { rows: kolRows } = await sql`'SELECT name FROM kols WHERE id = $1', [kol_id]`;
+      const { rows: kolRows } = await sql`SELECT name FROM kols WHERE id = ${kol_id}`;
       const newPost = {
         ...rows[0],
         kol_name: kolRows[0]?.name || 'Unknown KOL'
