@@ -46,11 +46,11 @@ export default function Analytics({ posts, kols, tokenSettings }: AnalyticsProps
           <div className="h-[400px]">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={engagementData}>
-                <XAxis dataKey="date" tickFormatter={formatDate} />
+                <XAxis dataKey="date" tickFormatter={(value) => formatDate(value)} />
                 <YAxis yAxisId="left" />
                 <YAxis yAxisId="right" orientation="right" />
                 <CartesianGrid strokeDasharray="3 3" />
-                <Tooltip labelFormatter={formatDate} />
+                <Tooltip labelFormatter={(value) => formatDate(value.toString())} />
                 <Legend />
                 <Line yAxisId="left" type="monotone" dataKey="likes" stroke="#8884d8" name="Likes" />
                 <Line yAxisId="right" type="monotone" dataKey="comments" stroke="#82ca9d" name="Comments" />
