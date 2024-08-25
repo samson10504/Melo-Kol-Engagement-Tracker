@@ -23,7 +23,7 @@ import { mockPosts, mockKols } from '@/data/mockData';
 export default function KOLTracker() {
   const [posts, setPosts] = useState<any[]>([]);
   const [kols, setKols] = useState<any[]>([]);
-  const [tokenSettings, setTokenSettings] = useState({ likesToToken: 1, commentsToToken: 50 });
+  const [tokenSettings, setTokenSettings] = useState({ likesToToken: 1, commentsToToken: 5 });
   const [newPost, setNewPost] = useState({ url: '', kolId: '' });
   const [newKol, setNewKol] = useState({ name: '', avatar: '' });
   const [alert, setAlert] = useState<{ message: string; type: string } | null>(null);
