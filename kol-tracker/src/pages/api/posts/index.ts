@@ -10,7 +10,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         FROM posts
         JOIN kols ON posts.kol_id = kols.id
       `);
-      const postsWithParsedCounts = rows.map(post => ({
+      const postsWithParsedCounts = rows.map((post: any) => ({
         ...post,
         counts: typeof post.counts === 'string' ? JSON.parse(post.counts) : post.counts
       }));
@@ -28,11 +28,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         kol_name: kolRows[0]?.name || 'Unknown KOL'
       };
       res.status(201).json(newPost);
+    } else if (req.method === 'DELETE') {
+      const postId = req.query.id;
+      await pool.query('DELETE FROM posts WHERE id = $1', [postId]);
+      res.status(204).json({});
     } else {
       res.status(405).json({ error: 'Method not allowed' });
     }
   } catch (error) {
     console.error('Error in /api/posts:', error);
-    res.status(500).json({ error: 'Internal server error', details: error.message });
+    res.status(500).json({ 
+      error: 'Internal server error', 
+      details: error instanceof Error ? error.message : String(error) 
+    });
   }
 }

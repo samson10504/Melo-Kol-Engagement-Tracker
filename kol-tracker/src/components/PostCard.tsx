@@ -2,8 +2,6 @@
 
 'use client';
 
-// File: src/components/PostCard.tsx
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -13,33 +11,56 @@ import { Switch } from "@/components/ui/switch";
 import { Trash2, Plus, Minus, RefreshCw, ThumbsUp, Eye, Coins, Calendar } from 'lucide-react';
 import { calculateTokens, formatDate, getKolName } from '@/lib/utils';
 
-interface PostCardProps {
-  post: {
-    id: string;
-    kol_id: string;
-    kol_name?: string;
-    url: string;
-    creation_date: string;
-    counts: Array<{ date: string; likes: number; views: number }>;
-    lastFetch?: { date: string; likes: number; views: number; tokens: number };
+interface Count {
+  date: string;
+  likes: number;
+  views: number;
+}
+
+interface Post {
+  id: string;
+  kol_id: number;
+  kol_name?: string;
+  url: string;
+  creation_date: string;
+  counts: Count[];
+  lastFetch?: {
+    date: string;
+    likes: number;
+    views: number;
+    tokens: number;
   };
-  kols: Array<{ id: string; name: string }>;
-  tokenSettings: { likesToToken: number; viewsToToken: number };
-  onUpdate: (id: string, counts: Array<{ date: string; likes: number; views: number }>) => Promise<void>;
+}
+
+interface KOL {
+  id: string;
+  name: string;
+}
+
+interface TokenSettings {
+  likesToToken: number;
+  viewsToToken: number;
+}
+
+interface PostCardProps {
+  post: Post;
+  kols: KOL[];
+  tokenSettings: TokenSettings;
+  onUpdate: (id: string, counts: Count[]) => Promise<void>;
   onDelete: (id: string) => void;
   onFetch: (id: string) => void;
 }
 
 export default function PostCard({ post, kols, tokenSettings, onUpdate, onDelete, onFetch }: PostCardProps) {
-  const [manualMode, setManualMode] = useState(false);
-  const [counts, setCounts] = useState(post.counts);
-  const [isLoading, setIsLoading] = useState(false);
+  const [manualMode, setManualMode] = useState<boolean>(false);
+  const [counts, setCounts] = useState<Count[]>(post.counts);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   useEffect(() => {
     setCounts(post.counts);
   }, [post.counts]);
 
-  const handleCountChange = useCallback((index: number, field: 'date' | 'likes' | 'views', value: string | number) => {
+  const handleCountChange = useCallback((index: number, field: keyof Count, value: string | number) => {
     const newCounts = counts.map((count, i) => 
       i === index ? { ...count, [field]: field === 'date' ? value : Number(value) } : count
     );
@@ -58,14 +79,13 @@ export default function PostCard({ post, kols, tokenSettings, onUpdate, onDelete
   }, [counts, post.id, onUpdate]);
 
   const handleAddCount = useCallback(() => {
-    const newCounts = [...counts, { date: new Date().toISOString().split('T')[0], likes: 0, views: 0 }];
-    setCounts(newCounts);
-  }, [counts]);
+    const newCount: Count = { date: new Date().toISOString().split('T')[0], likes: 0, views: 0 };
+    setCounts(prevCounts => [...prevCounts, newCount]);
+  }, []);
 
   const handleRemoveCount = useCallback((index: number) => {
-    const newCounts = counts.filter((_, i) => i !== index);
-    setCounts(newCounts);
-  }, [counts]);
+    setCounts(prevCounts => prevCounts.filter((_, i) => i !== index));
+  }, []);
 
   const handleManualModeChange = useCallback(async (checked: boolean) => {
     setManualMode(checked);

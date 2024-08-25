@@ -108,7 +108,7 @@ export default function KOLTracker() {
     }
   };
 
-  const handleUpdatePost = useCallback(async (id: number, newCounts: any[]) => {
+  const handleUpdatePost = useCallback(async (id: string, newCounts: { date: string; likes: number; views: number; }[]) => {
     setIsLoading(true);
     try {
       const response = await fetch(`/api/posts/${id}`, {
@@ -128,9 +128,9 @@ export default function KOLTracker() {
     }
   }, []);
 
-  const handleDeletePost = async (id: number) => {
-    setIsLoading(true);
+  const handleDeletePost = useCallback(async (id: string) => {
     try {
+      setIsLoading(true);
       await fetch(`/api/posts/${id}`, { method: 'DELETE' });
       setPosts(prevPosts => prevPosts.filter(post => post.id !== id));
       showAlert('Post deleted successfully', 'success');
@@ -140,7 +140,7 @@ export default function KOLTracker() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   const handleCreateKol = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -271,12 +271,12 @@ export default function KOLTracker() {
     }, { likes: 0, views: 0, tokens: 0 });
   }, [filteredPosts, tokenSettings]);
 
-  const fetchPostUpdate = useCallback(async (postId: number) => {
+  const fetchPostUpdate = useCallback(async (postId: string) => {
     setIsLoading(true);
     try {
       const response = await fetch(`/api/posts/${postId}`);
       const updatedPost = await response.json();
-      setPosts(prevPosts => prevPosts.map(post => post.id === postId ? updatedPost : post));
+      setPosts(prevPosts => prevPosts.map(post => post.id === parseInt(postId, 10) ? updatedPost : post));
       showAlert(`Post ${postId} updated successfully`, 'success');
     } catch (error) {
       console.error(`Error updating post ${postId}:`, error);
@@ -290,7 +290,7 @@ export default function KOLTracker() {
     setIsLoading(true);
     showAlert('Fetching updates for all posts...', 'info');
     try {
-      await Promise.all(posts.map(post => fetchPostUpdate(post.id)));
+      await Promise.all(posts.map(post => fetchPostUpdate(post.id.toString())));
       showAlert('All posts updated successfully', 'success');
     } catch (error) {
       console.error('Error updating some posts:', error);
