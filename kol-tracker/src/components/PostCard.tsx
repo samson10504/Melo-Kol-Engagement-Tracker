@@ -2,6 +2,8 @@
 
 'use client';
 
+// File: src/components/PostCard.tsx
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,40 +13,49 @@ import { Switch } from "@/components/ui/switch";
 import { Trash2, Plus, Minus, RefreshCw, ThumbsUp, Eye, Coins, Calendar } from 'lucide-react';
 import { calculateTokens, formatDate, getKolName } from '@/lib/utils';
 
-interface PostCardProps {
-  post: any;
-  kols: Array<{ id: string; name: string; }>;
-  tokenSettings: { likesToToken: number; viewsToToken: number; };
-  onUpdate: (id: number, counts: Array<{ date: string; likes: number; views: number; }>) => void;
-  onDelete: (id: number) => void;
-  onFetch: (id: number) => void;
-}
-
 export default function PostCard({ post, kols, tokenSettings, onUpdate, onDelete, onFetch }: PostCardProps) {
   const [manualMode, setManualMode] = useState(false);
   const [counts, setCounts] = useState(post.counts);
-
-  const handleCountChange = useCallback((index: number, field: 'date' | 'likes' | 'views', value: string | number) => {
-    setCounts(prevCounts => {
-      const newCounts = [...prevCounts];
-      newCounts[index] = { ...newCounts[index], [field]: field === 'date' ? value : Number(value) };
-      return newCounts;
-    });
-  }, []);
-
-  const handleAddCount = useCallback(() => {
-    setCounts(prevCounts => [...prevCounts, { date: new Date().toISOString().split('T')[0], likes: 0, views: 0 }]);
-  }, []);
-
-  const handleRemoveCount = useCallback((index: number) => {
-    setCounts(prevCounts => prevCounts.filter((_, i) => i !== index));
-  }, []);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    if (JSON.stringify(counts) !== JSON.stringify(post.counts)) {
-      onUpdate(post.id, counts);
+    setCounts(post.counts);
+  }, [post.counts]);
+
+  const handleCountChange = useCallback((index: number, field: 'date' | 'likes' | 'views', value: string | number) => {
+    const newCounts = counts.map((count, i) => 
+      i === index ? { ...count, [field]: field === 'date' ? value : Number(value) } : count
+    );
+    setCounts(newCounts);
+  }, [counts]);
+
+  const handleUpdateCounts = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      await onUpdate(post.id, counts);
+    } catch (error) {
+      console.error('Error updating post:', error);
+    } finally {
+      setIsLoading(false);
     }
-  }, [counts, post.id, post.counts, onUpdate]);
+  }, [counts, post.id, onUpdate]);
+
+  const handleAddCount = useCallback(() => {
+    const newCounts = [...counts, { date: new Date().toISOString().split('T')[0], likes: 0, views: 0 }];
+    setCounts(newCounts);
+  }, [counts]);
+
+  const handleRemoveCount = useCallback((index: number) => {
+    const newCounts = counts.filter((_, i) => i !== index);
+    setCounts(newCounts);
+  }, [counts]);
+
+  const handleManualModeChange = useCallback(async (checked: boolean) => {
+    setManualMode(checked);
+    if (!checked) {
+      await handleUpdateCounts();
+    }
+  }, [handleUpdateCounts]);
 
   const latestCount = counts[counts.length - 1] || { likes: 0, views: 0, date: '' };
   const totalTokens = calculateTokens(
@@ -59,7 +70,7 @@ export default function PostCard({ post, kols, tokenSettings, onUpdate, onDelete
       <CardHeader>
         <div className="flex justify-between items-center">
           <div>
-            <CardTitle>{getKolName(post.kolId, kols)}</CardTitle>
+            <CardTitle>{post.kol_name || getKolName(post.kol_id, kols) || 'Unknown KOL'}</CardTitle>
             <p className="text-sm text-muted-foreground">Created: {formatDate(post.creation_date)}</p>
           </div>
           <Badge variant="secondary">
@@ -78,20 +89,23 @@ export default function PostCard({ post, kols, tokenSettings, onUpdate, onDelete
                   type="date"
                   value={count.date}
                   onChange={(e) => handleCountChange(index, 'date', e.target.value)}
+                  disabled={isLoading}
                 />
                 <Input
                   type="number"
                   value={count.likes}
                   onChange={(e) => handleCountChange(index, 'likes', e.target.value)}
                   placeholder="Likes"
+                  disabled={isLoading}
                 />
                 <Input
                   type="number"
                   value={count.views}
                   onChange={(e) => handleCountChange(index, 'views', e.target.value)}
                   placeholder="Views"
+                  disabled={isLoading}
                 />
-                <Button variant="destructive" onClick={() => handleRemoveCount(index)}>
+                <Button variant="destructive" onClick={() => handleRemoveCount(index)} disabled={isLoading}>
                   <Minus className="h-4 w-4" />
                 </Button>
               </div>
@@ -108,19 +122,19 @@ export default function PostCard({ post, kols, tokenSettings, onUpdate, onDelete
           <span>Manual Input Mode</span>
           <Switch 
             checked={manualMode} 
-            onCheckedChange={setManualMode}
+            onCheckedChange={handleManualModeChange}
           />
         </div>
         {manualMode && (
-          <Button onClick={handleAddCount} className="w-full">
+          <Button onClick={handleAddCount} className="w-full" disabled={isLoading}>
             <Plus className="mr-2 h-4 w-4" /> Add Count
           </Button>
         )}
         <div className="flex space-x-2">
-          <Button onClick={() => onFetch(post.id)} className="flex-1">
+          <Button onClick={() => onFetch(post.id)} className="flex-1" disabled={isLoading}>
             <RefreshCw className="mr-2 h-4 w-4" /> Fetch
           </Button>
-          <Button variant="destructive" onClick={() => onDelete(post.id)} className="flex-1">
+          <Button variant="destructive" onClick={() => onDelete(post.id)} className="flex-1" disabled={isLoading}>
             <Trash2 className="mr-2 h-4 w-4" /> Delete Post
           </Button>
         </div>

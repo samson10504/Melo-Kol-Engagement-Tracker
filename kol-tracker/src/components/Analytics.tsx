@@ -13,28 +13,28 @@ interface AnalyticsProps {
 }
 
 export default function Analytics({ posts, kols, tokenSettings }: AnalyticsProps) {
-  const engagementData = posts.flatMap(post => post.counts.map(count => ({
-    ...count,
-    kolName: getKolName(post.kolId, kols)
-  })));
+  const engagementData = posts.flatMap(post => 
+    post.counts.map((count: any) => ({
+      ...count,
+      kolName: getKolName(post.kolId, kols),
+      postId: post.id
+    }))
+  );
 
-  const kolPerformanceData = kols.map(kol => ({
-    name: kol.name,
-    totalLikes: posts
-      .filter(post => post.kolId === kol.id)
-      .reduce((sum, post) => sum + (post.counts[post.counts.length - 1]?.likes || 0), 0),
-    totalViews: posts
-      .filter(post => post.kolId === kol.id)
-      .reduce((sum, post) => sum + (post.counts[post.counts.length - 1]?.views || 0), 0),
-    totalTokens: posts
-      .filter(post => post.kolId === kol.id)
-      .reduce((sum, post) => sum + calculateTokens(
+  const kolPerformanceData = kols.map(kol => {
+    const kolPosts = posts.filter(post => post.kol_id === kol.id);
+    return {
+      name: kol.name,
+      totalLikes: kolPosts.reduce((sum, post) => sum + (post.counts[post.counts.length - 1]?.likes || 0), 0),
+      totalViews: kolPosts.reduce((sum, post) => sum + (post.counts[post.counts.length - 1]?.views || 0), 0),
+      totalTokens: kolPosts.reduce((sum, post) => sum + calculateTokens(
         post.counts[post.counts.length - 1]?.likes || 0, 
         post.counts[post.counts.length - 1]?.views || 0,
         tokenSettings.likesToToken,
         tokenSettings.viewsToToken
       ), 0)
-  }));
+    };
+  });
 
   return (
     <div className="space-y-8">

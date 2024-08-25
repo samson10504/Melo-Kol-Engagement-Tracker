@@ -16,7 +16,7 @@ export const formatDate = (dateString: string) => {
   return new Date(dateString).toLocaleDateString(undefined, options);
 };
 
-export const getKolName = (kolId: string, kols: Array<{ id: string; name: string; }>) => {
+export const getKolName = (kolId: number, kols: any[]): string => {
   const kol = kols.find(k => k.id === kolId);
   return kol ? kol.name : 'Unknown KOL';
 };

@@ -2,7 +2,9 @@
 
 'use client';
 
-import React, { useState, useMemo, useCallback } from 'react';
+// File: src/components/KOLTracker.tsx
+
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -11,74 +13,234 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { ThumbsUp, Eye, Coins, RefreshCw, UserPlus, UserMinus, Calendar, Settings, Filter, PlusCircle } from 'lucide-react';
+import { ThumbsUp, Eye, Coins, RefreshCw, UserPlus, UserMinus, Calendar, Settings, Filter, PlusCircle, Database } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { mockPosts, mockKols } from '@/data/mockData';
-import { calculateTokens, formatDate, getKolName } from '@/lib/utils';
+import { calculateTokens, formatDate, getKolName, getKolAvatar } from '@/lib/utils';
 import PostCard from './PostCard';
 import Analytics from './Analytics';
+import { mockPosts, mockKols } from '@/data/mockData';
 
 export default function KOLTracker() {
-  const [posts, setPosts] = useState(mockPosts);
-  const [kols, setKols] = useState(mockKols);
+  const [posts, setPosts] = useState<any[]>([]);
+  const [kols, setKols] = useState<any[]>([]);
   const [tokenSettings, setTokenSettings] = useState({ likesToToken: 1, viewsToToken: 50 });
   const [newPost, setNewPost] = useState({ url: '', kolId: '' });
   const [newKol, setNewKol] = useState({ name: '', avatar: '' });
-  const [alert, setAlert] = useState(null);
+  const [alert, setAlert] = useState<{ message: string; type: string } | null>(null);
   const [selectedKol, setSelectedKol] = useState('all');
   const [dateFilter, setDateFilter] = useState({ start: '', end: '' });
+  const [isLoading, setIsLoading] = useState(false);
 
-  const showAlert = (message, type) => {
+  useEffect(() => {
+    fetchPosts();
+    fetchKOLs();
+  }, []);
+
+  const showAlert = (message: string, type: string) => {
     setAlert({ message, type });
     setTimeout(() => setAlert(null), 5000);
   };
 
-  const handleCreatePost = (e) => {
-    e.preventDefault();
-    const newPostWithId = { 
-      ...newPost, 
-      id: Date.now(),
-      creation_date: new Date().toISOString().split('T')[0],
-      counts: []
-    };
-    setPosts([...posts, newPostWithId]);
-    setNewPost({ url: '', kolId: '' });
-    showAlert('Post created successfully', 'success');
+  const fetchPosts = async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch('/api/posts');
+      const data = await response.json();
+      console.log('Posts API response:', data);
+      setPosts(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error('Error fetching posts:', error);
+      showAlert('Error fetching posts', 'error');
+      setPosts([]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleUpdatePost = useCallback((id, newCounts) => {
-    setPosts(prevPosts => 
-      prevPosts.map(post => 
-        post.id === id ? { ...post, counts: newCounts } : post
-      )
-    );
+  const fetchKOLs = async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch('/api/kols');
+      const data = await response.json();
+      console.log('KOLs API response:', data);
+      setKols(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error('Error fetching KOLs:', error);
+      showAlert('Error fetching KOLs', 'error');
+      setKols([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCreatePost = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPost.url.trim() || !newPost.kolId) {
+      showAlert('Please fill in all fields', 'error');
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const response = await fetch('/api/posts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url: newPost.url,
+          kol_id: parseInt(newPost.kolId, 10),
+          creation_date: new Date().toISOString().split('T')[0],
+          counts: []
+        })
+      });
+      const data = await response.json();
+      const selectedKol = kols.find(kol => kol.id.toString() === newPost.kolId);
+      const newPostWithKolName = {
+        ...data,
+        kol_name: selectedKol ? selectedKol.name : 'Unknown KOL'
+      };
+      setPosts(prevPosts => [...prevPosts, newPostWithKolName]);
+      setNewPost({ url: '', kolId: '' });
+      showAlert('Post created successfully', 'success');
+    } catch (error) {
+      console.error('Error creating post:', error);
+      showAlert('Error creating post', 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleUpdatePost = useCallback(async (id: number, newCounts: any[]) => {
+    setIsLoading(true);
+    try {
+      const response = await fetch(`/api/posts/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ counts: newCounts })
+      });
+      const updatedPost = await response.json();
+      setPosts(prevPosts => 
+        prevPosts.map(post => post.id === id ? updatedPost : post)
+      );
+    } catch (error) {
+      console.error('Error updating post:', error);
+      showAlert('Error updating post', 'error');
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
-  const handleDeletePost = (id) => {
-    setPosts(posts.filter(post => post.id !== id));
-    showAlert('Post deleted successfully', 'success');
+  const handleDeletePost = async (id: number) => {
+    setIsLoading(true);
+    try {
+      await fetch(`/api/posts/${id}`, { method: 'DELETE' });
+      setPosts(prevPosts => prevPosts.filter(post => post.id !== id));
+      showAlert('Post deleted successfully', 'success');
+    } catch (error) {
+      console.error('Error deleting post:', error);
+      showAlert('Error deleting post', 'error');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleCreateKol = (e) => {
+  const handleCreateKol = async (e: React.FormEvent) => {
     e.preventDefault();
-    const newKolWithId = { 
-      ...newKol, 
-      id: Date.now().toString(),
-      avatar: `https://api.dicebear.com/6.x/avataaars/svg?seed=${newKol.name}`
-    };
-    setKols([...kols, newKolWithId]);
-    setNewKol({ name: '', avatar: '' });
-    showAlert('KOL created successfully', 'success');
+    if (!newKol.name.trim()) {
+      showAlert('KOL name cannot be empty', 'error');
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const avatar = `https://api.dicebear.com/6.x/avataaars/svg?seed=${encodeURIComponent(newKol.name)}`;
+      const response = await fetch('/api/kols', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...newKol, avatar })
+      });
+      const data = await response.json();
+      setKols(prevKols => [...prevKols, data]);
+      setNewKol({ name: '', avatar: '' });
+      showAlert('KOL created successfully', 'success');
+    } catch (error) {
+      console.error('Error creating KOL:', error);
+      showAlert('Error creating KOL', 'error');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleDeleteKol = (id) => {
-    setKols(kols.filter(kol => kol.id !== id));
-    showAlert('KOL deleted successfully', 'success');
+  const handleDeleteKol = async (id: string) => {
+    setIsLoading(true);
+    try {
+      await fetch(`/api/kols/${id}`, { method: 'DELETE' });
+      setKols(prevKols => prevKols.filter(kol => kol.id !== id));
+      showAlert('KOL deleted successfully', 'success');
+    } catch (error) {
+      console.error('Error deleting KOL:', error);
+      showAlert('Error deleting KOL', 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const importMockData = async () => {
+    setIsLoading(true);
+    showAlert('Importing mock data...', 'info');
+    try {
+      // Import mock KOLs and keep track of their new IDs
+      const kolIdMap = new Map();
+      for (const kol of mockKols) {
+        const response = await fetch('/api/kols', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(kol)
+        });
+        const newKol = await response.json();
+        kolIdMap.set(kol.id, newKol.id);
+      }
+      
+      // Import mock posts using the new KOL IDs
+      for (const post of mockPosts) {
+        const newKolId = kolIdMap.get(post.kolId);
+        if (newKolId) {
+          try {
+            const response = await fetch('/api/posts', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                url: post.url,
+                kol_id: newKolId, // Use kol_id instead of kolId
+                creation_date: post.creation_date,
+                counts: post.counts // Don't stringify counts here
+              })
+            });
+            if (!response.ok) {
+              const errorData = await response.json();
+              console.error('Error creating post:', errorData);
+            } else {
+              const newPost = await response.json();
+              console.log('Created post:', newPost);
+            }
+          } catch (error) {
+            console.error('Error creating post:', error);
+          }
+        } else {
+          console.error('No matching KOL found for:', post.kolId);
+        }
+      }
+      showAlert('Mock data imported successfully', 'success');
+      fetchPosts();
+      fetchKOLs();
+    } catch (error) {
+      console.error('Error importing mock data:', error);
+      showAlert('Error importing mock data', 'error');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const filteredPosts = useMemo(() => {
-    return posts.filter(post => {
-      const kolMatch = selectedKol === 'all' || post.kolId === selectedKol;
+    return (Array.isArray(posts) ? posts : []).filter(post => {
+      const kolMatch = selectedKol === 'all' || post.kol_id.toString() === selectedKol;
       const dateMatch = (!dateFilter.start || new Date(post.creation_date) >= new Date(dateFilter.start)) &&
                         (!dateFilter.end || new Date(post.creation_date) <= new Date(dateFilter.end));
       return kolMatch && dateMatch;
@@ -87,80 +249,55 @@ export default function KOLTracker() {
 
   const totalEngagement = useMemo(() => {
     return filteredPosts.reduce((total, post) => {
+      if (!post.counts || !Array.isArray(post.counts) || post.counts.length === 0) {
+        return total; // Skip this post if counts is not a valid array
+      }
+
       const latestCount = post.counts[post.counts.length - 1];
       if (!latestCount) return total;
 
       const postTokens = calculateTokens(
-        latestCount.likes,
-        latestCount.views,
+        latestCount.likes || 0,
+        latestCount.views || 0,
         tokenSettings.likesToToken,
         tokenSettings.viewsToToken
       );
 
       return {
-        likes: total.likes + latestCount.likes,
-        views: total.views + latestCount.views,
+        likes: total.likes + (latestCount.likes || 0),
+        views: total.views + (latestCount.views || 0),
         tokens: total.tokens + postTokens
       };
     }, { likes: 0, views: 0, tokens: 0 });
   }, [filteredPosts, tokenSettings]);
 
-  const fetchUpdates = async () => {
-    showAlert('Fetching updates from backend...', 'info');
-    setTimeout(() => {
-      const updatedPosts = posts.map(post => {
-        const now = new Date();
-        const creationDate = new Date(post.creation_date);
-        const daysSinceCreation = Math.floor((now - creationDate) / (1000 * 60 * 60 * 24));
-        
-        if (daysSinceCreation >= 14 && post.counts.length === 0) {
-          post.counts.push({
-            date: new Date(creationDate.getTime() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-            likes: Math.floor(Math.random() * 1000),
-            views: Math.floor(Math.random() * 5000)
-          });
-        } else if (daysSinceCreation >= 28 && post.counts.length === 1) {
-          post.counts.push({
-            date: new Date(creationDate.getTime() + 28 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-            likes: Math.floor(Math.random() * 2000),
-            views: Math.floor(Math.random() * 10000)
-          });
-        }
-        return post;
-      });
-      setPosts(updatedPosts);
-      showAlert('Posts updated successfully', 'success');
-    }, 2000);
-  };
-
-  const fetchPostUpdate = useCallback((postId: number) => {
-    setPosts(prevPosts => prevPosts.map(post => {
-      if (post.id === postId) {
-        const latestCount = post.counts[post.counts.length - 1] || { likes: 0, views: 0 };
-        const newLikes = latestCount.likes + Math.floor(Math.random() * 100);
-        const newViews = latestCount.views + Math.floor(Math.random() * 500);
-        const newTokens = calculateTokens(newLikes, newViews, tokenSettings.likesToToken, tokenSettings.viewsToToken);
-        
-        return {
-          ...post,
-          counts: [...post.counts, { date: new Date().toISOString(), likes: newLikes, views: newViews }],
-          lastFetch: {
-            date: new Date().toISOString(),
-            likes: newLikes,
-            views: newViews,
-            tokens: newTokens
-          }
-        };
-      }
-      return post;
-    }));
-    showAlert(`Post ${postId} updated successfully`, 'success');
-  }, [tokenSettings]);
+  const fetchPostUpdate = useCallback(async (postId: number) => {
+    setIsLoading(true);
+    try {
+      const response = await fetch(`/api/posts/${postId}`);
+      const updatedPost = await response.json();
+      setPosts(prevPosts => prevPosts.map(post => post.id === postId ? updatedPost : post));
+      showAlert(`Post ${postId} updated successfully`, 'success');
+    } catch (error) {
+      console.error(`Error updating post ${postId}:`, error);
+      showAlert(`Error updating post ${postId}`, 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   const fetchAllUpdates = async () => {
+    setIsLoading(true);
     showAlert('Fetching updates for all posts...', 'info');
-    posts.forEach(post => fetchPostUpdate(post.id));
-    showAlert('All posts updated successfully', 'success');
+    try {
+      await Promise.all(posts.map(post => fetchPostUpdate(post.id)));
+      showAlert('All posts updated successfully', 'success');
+    } catch (error) {
+      console.error('Error updating some posts:', error);
+      showAlert('Error updating some posts', 'error');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -209,8 +346,8 @@ export default function KOLTracker() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All KOLs</SelectItem>
-                  {kols.map(kol => (
-                    <SelectItem key={kol.id} value={kol.id}>{kol.name}</SelectItem>
+                  {(Array.isArray(kols) ? kols : []).map(kol => (
+                    <SelectItem key={kol.id} value={kol.id.toString()}>{kol.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -259,10 +396,16 @@ export default function KOLTracker() {
           </CardContent>
         </Card>
       </div>
-
-      <Button onClick={fetchAllUpdates} className="mb-6">
-        <RefreshCw className="mr-2 h-4 w-4" /> Fetch All
-      </Button>
+      
+      <div className="flex justify-between items-center mb-6">
+        <Button onClick={fetchAllUpdates} disabled={isLoading}>
+          <RefreshCw className="mr-2 h-4 w-4" /> Fetch All
+        </Button>
+        <Button onClick={importMockData} disabled={isLoading}>
+          <Database className="mr-2 h-4 w-4" /> Import Mock Data
+        </Button>
+      </div>
+      
 
       <Tabs defaultValue="posts" className="space-y-4">
         <TabsList className="grid w-full grid-cols-4">
@@ -315,12 +458,12 @@ export default function KOLTracker() {
                     </SelectTrigger>
                     <SelectContent>
                       {kols.map(kol => (
-                        <SelectItem key={kol.id} value={kol.id}>{kol.name}</SelectItem>
+                        <SelectItem key={kol.id} value={kol.id.toString()}>{kol.name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
-                <Button type="submit">Create Post</Button>
+                <Button type="submit" disabled={isLoading}>Create Post</Button>
               </form>
             </CardContent>
           </Card>
@@ -343,7 +486,7 @@ export default function KOLTracker() {
                     onChange={(e) => setNewKol({ ...newKol, name: e.target.value })}
                   />
                 </div>
-                <Button type="submit">
+                <Button type="submit" disabled={isLoading || !newKol.name.trim()}>
                   <UserPlus className="mr-2 h-4 w-4" /> Add KOL
                 </Button>
               </form>
@@ -357,7 +500,7 @@ export default function KOLTracker() {
                       </Avatar>
                       <span>{kol.name}</span>
                     </div>
-                    <Button variant="destructive" onClick={() => handleDeleteKol(kol.id)}>
+                    <Button variant="destructive" onClick={() => handleDeleteKol(kol.id)} disabled={isLoading}>
                       <UserMinus className="h-4 w-4" />
                     </Button>
                   </div>
