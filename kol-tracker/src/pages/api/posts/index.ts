@@ -31,8 +31,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       res.status(201).json(newPost);
     } else if (req.method === 'DELETE') {
       const postId = req.query.id;
-      await sql`'DELETE FROM posts WHERE id = $1', [postId]`;
-      res.status(204).json({});
+      await sql`DELETE FROM posts WHERE id = ${postId}`;
+      res.status(204).end();
     } else {
       res.status(405).json({ error: 'Method not allowed' });
     }
