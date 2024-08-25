@@ -34,3 +34,18 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+
+
+CREATE TABLE kols (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  avatar VARCHAR(255)
+);
+
+CREATE TABLE posts (
+  id SERIAL PRIMARY KEY,
+  url VARCHAR(255) NOT NULL,
+  kol_id INTEGER REFERENCES kols(id),
+  creation_date TIMESTAMP NOT NULL,
+  counts JSONB
+);

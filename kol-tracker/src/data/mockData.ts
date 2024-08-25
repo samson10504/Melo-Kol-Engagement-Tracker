@@ -2,7 +2,7 @@
 
 export const mockPosts = [
   { 
-    url: 'https://www.instagram.com/p/123', 
+    url: 'https://www.instagram.com/p/CvuIOtUhCJ7', 
     kolId: 1, 
     creation_date: '2023-07-26T10:30:00.000Z', 
     counts: [
@@ -11,7 +11,7 @@ export const mockPosts = [
     ]
   },
   { 
-    url: 'https://www.instagram.com/p/124', 
+    url: 'https://www.instagram.com/p/Cvwrwh3hTnc', 
     kolId: 2, 
     creation_date: '2023-07-27T14:20:00.000Z', 
     counts: [
@@ -20,7 +20,7 @@ export const mockPosts = [
     ]
   },
   { 
-    url: 'https://www.instagram.com/p/125', 
+    url: 'https://www.instagram.com/p/C8McNC9yizs', 
     kolId: 3, 
     creation_date: '2023-07-28T08:45:00.000Z', 
     counts: [
@@ -29,7 +29,7 @@ export const mockPosts = [
     ]
   },
   { 
-    url: 'https://www.instagram.com/p/126', 
+    url: 'https://www.instagram.com/p/C9jIxy1BtOk', 
     kolId: 4, 
     creation_date: '2023-07-29T17:30:00.000Z', 
     counts: [
@@ -38,7 +38,7 @@ export const mockPosts = [
     ]
   },
   { 
-    url: 'https://www.instagram.com/p/127', 
+    url: 'https://www.instagram.com/p/C-4ifS5BA__', 
     kolId: 5, 
     creation_date: '2023-07-30T12:15:00.000Z', 
     counts: [

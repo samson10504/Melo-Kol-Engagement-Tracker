@@ -290,7 +290,7 @@ export default function KOLTracker() {
       }
       const updatedPost = await response.json();
       console.log('Fetched updated post:', updatedPost);
-      setPosts(prevPosts => prevPosts.map(post => post.id === parseInt(postId, 10) ? updatedPost : post));
+      setPosts(prevPosts => prevPosts.map(post => post.id === updatedPost.id ? updatedPost : post));
       showAlert(`Post ${postId} updated successfully`, 'success');
     } catch (error) {
       console.error(`Error updating post ${postId}:`, error);
@@ -304,7 +304,12 @@ export default function KOLTracker() {
     setIsLoading(true);
     showAlert('Fetching updates for all posts...', 'info');
     try {
-      const updatedPosts = await Promise.all(posts.map(post => fetch(`/api/posts/${post.id}/fetch`).then(res => res.json())));
+      const updatedPosts = await Promise.all(posts.map(post => 
+        fetch(`/api/posts/${post.id}/fetch`).then(res => {
+          if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+          return res.json();
+        })
+      ));
       setPosts(updatedPosts);
       showAlert('All posts updated successfully', 'success');
     } catch (error) {
