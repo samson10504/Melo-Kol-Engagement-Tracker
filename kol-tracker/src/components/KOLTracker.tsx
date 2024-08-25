@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { ThumbsUp, Eye, Coins, RefreshCw, UserPlus, UserMinus, Calendar, Settings, Filter, PlusCircle, Database } from 'lucide-react';
+import { ThumbsUp, MessageCircle, Coins, RefreshCw, UserPlus, UserMinus, Calendar, Settings, Filter, PlusCircle, Database } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { calculateTokens, formatDate, getKolName, getKolAvatar } from '@/lib/utils';
 import PostCard from './PostCard';
@@ -23,7 +23,7 @@ import { mockPosts, mockKols } from '@/data/mockData';
 export default function KOLTracker() {
   const [posts, setPosts] = useState<any[]>([]);
   const [kols, setKols] = useState<any[]>([]);
-  const [tokenSettings, setTokenSettings] = useState({ likesToToken: 1, viewsToToken: 50 });
+  const [tokenSettings, setTokenSettings] = useState({ likesToToken: 1, commentsToToken: 50 });
   const [newPost, setNewPost] = useState({ url: '', kolId: '' });
   const [newKol, setNewKol] = useState({ name: '', avatar: '' });
   const [alert, setAlert] = useState<{ message: string; type: string } | null>(null);
@@ -86,20 +86,24 @@ export default function KOLTracker() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           url: newPost.url,
-          kol_id: parseInt(newPost.kolId, 10),
-          creation_date: new Date().toISOString().split('T')[0],
-          counts: []
+          kol_id: parseInt(newPost.kolId, 10)
         })
       });
       const data = await response.json();
-      const selectedKol = kols.find(kol => kol.id.toString() === newPost.kolId);
-      const newPostWithKolName = {
-        ...data,
-        kol_name: selectedKol ? selectedKol.name : 'Unknown KOL'
+      
+      // Fetch initial post data
+      const fetchResponse = await fetch(`/api/posts/${data.id}/fetch`);
+      const fetchedPost = await fetchResponse.json();
+      
+      // Update the creation_date with the fetched timestamp
+      const updatedPost = {
+        ...fetchedPost,
+        creation_date: fetchedPost.creation_date || new Date().toISOString()
       };
-      setPosts(prevPosts => [...prevPosts, newPostWithKolName]);
+      
+      setPosts(prevPosts => [...prevPosts, updatedPost]);
       setNewPost({ url: '', kolId: '' });
-      showAlert('Post created successfully', 'success');
+      showAlert('Post created and fetched successfully', 'success');
     } catch (error) {
       console.error('Error creating post:', error);
       showAlert('Error creating post', 'error');
@@ -108,7 +112,7 @@ export default function KOLTracker() {
     }
   };
 
-  const handleUpdatePost = useCallback(async (id: string, newCounts: { date: string; likes: number; views: number; }[]) => {
+  const handleUpdatePost = useCallback(async (id: string, newCounts: { date: string; likes: number; comments: number; }[]) => {
     setIsLoading(true);
     try {
       const response = await fetch(`/api/posts/${id}`, {
@@ -263,29 +267,34 @@ export default function KOLTracker() {
 
       const postTokens = calculateTokens(
         latestCount.likes || 0,
-        latestCount.views || 0,
+        latestCount.comments || 0,
         tokenSettings.likesToToken,
-        tokenSettings.viewsToToken
+        tokenSettings.commentsToToken
       );
 
       return {
         likes: total.likes + (latestCount.likes || 0),
-        views: total.views + (latestCount.views || 0),
+        comments: total.comments + (latestCount.comments || 0),
         tokens: total.tokens + postTokens
       };
-    }, { likes: 0, views: 0, tokens: 0 });
+    }, { likes: 0, comments: 0, tokens: 0 });
   }, [filteredPosts, tokenSettings]);
 
   const fetchPostUpdate = useCallback(async (postId: string) => {
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/posts/${postId}`);
+      const response = await fetch(`/api/posts/${postId}/fetch`);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(`HTTP error! status: ${response.status}, message: ${errorData.error || 'Unknown error'}`);
+      }
       const updatedPost = await response.json();
+      console.log('Fetched updated post:', updatedPost);
       setPosts(prevPosts => prevPosts.map(post => post.id === parseInt(postId, 10) ? updatedPost : post));
       showAlert(`Post ${postId} updated successfully`, 'success');
     } catch (error) {
       console.error(`Error updating post ${postId}:`, error);
-      showAlert(`Error updating post ${postId}`, 'error');
+      showAlert(`Error updating post ${postId}: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
     } finally {
       setIsLoading(false);
     }
@@ -295,7 +304,8 @@ export default function KOLTracker() {
     setIsLoading(true);
     showAlert('Fetching updates for all posts...', 'info');
     try {
-      await Promise.all(posts.map(post => fetchPostUpdate(post.id.toString())));
+      const updatedPosts = await Promise.all(posts.map(post => fetch(`/api/posts/${post.id}/fetch`).then(res => res.json())));
+      setPosts(updatedPosts);
       showAlert('All posts updated successfully', 'success');
     } catch (error) {
       console.error('Error updating some posts:', error);
@@ -328,9 +338,9 @@ export default function KOLTracker() {
               <span className="font-bold">{totalEngagement.likes}</span>
             </div>
             <div className="flex items-center space-x-2">
-              <Eye className="text-blue-500" />
-              <span>Views:</span>
-              <span className="font-bold">{totalEngagement.views}</span>
+              <MessageCircle className="text-blue-500" />
+              <span>Comments:</span>
+              <span className="font-bold">{totalEngagement.comments}</span>
             </div>
             <div className="flex items-center space-x-2">
               <Coins className="text-yellow-500" />
@@ -389,12 +399,12 @@ export default function KOLTracker() {
                 />
               </div>
               <div>
-                <Label htmlFor="viewsToToken">Views per Token</Label>
+                <Label htmlFor="commentsToToken">Comments per Token</Label>
                 <Input
-                  id="viewsToToken"
+                  id="commentsToToken"
                   type="number"
-                  value={tokenSettings.viewsToToken}
-                  onChange={(e) => setTokenSettings(prev => ({ ...prev, viewsToToken: parseInt(e.target.value) }))}
+                  value={tokenSettings.commentsToToken}
+                  onChange={(e) => setTokenSettings(prev => ({ ...prev, commentsToToken: parseInt(e.target.value) }))}
                 />
               </div>
             </div>

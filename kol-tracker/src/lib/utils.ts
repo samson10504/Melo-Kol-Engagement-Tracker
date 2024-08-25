@@ -7,13 +7,18 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-export const calculateTokens = (likes: number, views: number, likesToToken: number, viewsToToken: number) => {
-  return Math.floor(likes / likesToToken) + Math.floor(views / viewsToToken);
+export const calculateTokens = (likes: number, comments: number, likesToToken: number, commentsToToken: number) => {
+  return Math.floor(likes / likesToToken) + Math.floor(comments / commentsToToken);
 };
 
-export const formatDate = (dateString: string) => {
-  const options: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'long', day: 'numeric' };
-  return new Date(dateString).toLocaleDateString(undefined, options);
+export const formatDate = (dateString: string, useHKTime = false) => {
+  if (!dateString) return 'N/A';
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return dateString; // Return the original string if it's an invalid date
+  if (useHKTime) {
+    return date.toLocaleString('en-HK', { timeZone: 'Asia/Hong_Kong' });
+  }
+  return dateString; // Return the original date string for creation_date
 };
 
 export const getKolName = (kolId: number, kols: any[]): string => {

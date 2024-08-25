@@ -20,13 +20,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const countsString = JSON.stringify(counts);
       const { rows } = await sql`
         INSERT INTO posts (url, kol_id, creation_date, counts)
-        VALUES (${url}, ${kol_id}, ${creation_date}, ${countsString})
+        VALUES (${url}, ${kol_id}, ${new Date().toISOString()}, ${countsString})
         RETURNING *
       `;
       const { rows: kolRows } = await sql`SELECT name FROM kols WHERE id = ${kol_id}`;
       const newPost = {
         ...rows[0],
-        kol_name: kolRows[0]?.name || 'Unknown KOL'
+        kol_name: kolRows[0]?.name || 'Unknown KOL',
+        counts: [{ date: new Date().toISOString().split('T')[0], likes: 0, comments: 0 }]
       };
       res.status(201).json(newPost);
     } else if (req.method === 'DELETE') {

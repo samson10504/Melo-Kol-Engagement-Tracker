@@ -4,14 +4,15 @@ import sql from '../../../lib/db';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { id } = req.query;
+  const postId = Array.isArray(id) ? id[0] : id;
+
+  if (typeof postId !== 'string') {
+    res.status(400).json({ error: 'Invalid post ID' });
+    return;
+  }
 
   if (req.method === 'GET') {
     try {
-      const postId = Array.isArray(id) ? id[0] : id;
-      if (typeof postId !== 'string') {
-        res.status(400).json({ error: 'Invalid post ID' });
-        return;
-      }
       const { rows } = await sql`SELECT * FROM posts WHERE id = ${postId}`;
       if (rows.length === 0) {
         res.status(404).json({ error: 'Post not found' });
@@ -19,18 +20,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         res.status(200).json(rows[0]);
       }
     } catch (error) {
-      console.error('Error fetching post:', error);
-      res.status(500).json({ error: 'Error fetching post', details: error instanceof Error ? error.message : String(error) });
+      res.status(500).json({ error: 'Error fetching post' });
     }
   } else if (req.method === 'PUT') {
     const { counts } = req.body;
     try {
       const { rows } = await sql`
-        'UPDATE posts SET counts = $1 WHERE id = $2 RETURNING *',
-        [JSON.stringify(counts), id]
+        UPDATE posts
+        SET counts = ${JSON.stringify(counts)},
+            creation_date = ${new Date().toISOString()}
+        WHERE id = ${postId}
+        RETURNING *
       `;
-      res.status(200).json(rows[0]);
+      
+      if (rows.length === 0) {
+        res.status(404).json({ error: 'Post not found' });
+      } else {
+        res.status(200).json(rows[0]);
+      }
     } catch (error) {
+      console.error('Error updating post:', error);
       res.status(500).json({ error: 'Error updating post' });
     }
   } else if (req.method === 'DELETE') {

@@ -8,13 +8,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { Trash2, Plus, Minus, RefreshCw, ThumbsUp, Eye, Coins, Calendar } from 'lucide-react';
+import { Trash2, Plus, Minus, RefreshCw, ThumbsUp, MessageCircle, Coins, Calendar } from 'lucide-react';
 import { calculateTokens, formatDate, getKolName } from '@/lib/utils';
 
 interface Count {
   date: string;
   likes: number;
-  views: number;
+  comments: number;
 }
 
 interface Post {
@@ -27,7 +27,7 @@ interface Post {
   lastFetch?: {
     date: string;
     likes: number;
-    views: number;
+    comments: number;
     tokens: number;
   };
 }
@@ -39,7 +39,7 @@ interface KOL {
 
 interface TokenSettings {
   likesToToken: number;
-  viewsToToken: number;
+  commentsToToken: number;
 }
 
 interface PostCardProps {
@@ -53,11 +53,11 @@ interface PostCardProps {
 
 export default function PostCard({ post, kols, tokenSettings, onUpdate, onDelete, onFetch }: PostCardProps) {
   const [manualMode, setManualMode] = useState<boolean>(false);
-  const [counts, setCounts] = useState<Count[]>(post.counts);
+  const [counts, setCounts] = useState<Count[]>(post.counts || []);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   useEffect(() => {
-    setCounts(post.counts);
+    setCounts(post.counts || []);
   }, [post.counts]);
 
   const handleCountChange = useCallback((index: number, field: keyof Count, value: string | number) => {
@@ -79,7 +79,7 @@ export default function PostCard({ post, kols, tokenSettings, onUpdate, onDelete
   }, [counts, post.id, onUpdate]);
 
   const handleAddCount = useCallback(() => {
-    const newCount: Count = { date: new Date().toISOString().split('T')[0], likes: 0, views: 0 };
+    const newCount: Count = { date: new Date().toISOString().split('T')[0], likes: 0, comments: 0 };
     setCounts(prevCounts => [...prevCounts, newCount]);
   }, []);
 
@@ -94,12 +94,24 @@ export default function PostCard({ post, kols, tokenSettings, onUpdate, onDelete
     }
   }, [handleUpdateCounts]);
 
-  const latestCount = counts[counts.length - 1] || { likes: 0, views: 0, date: '' };
+  const handleFetch = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      await onFetch(post.id);
+    } catch (error) {
+      console.error('Error fetching post update:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [post.id, onFetch]);
+
+  const postCounts = post.counts || [];
+  const latestCount = postCounts.length > 0 ? postCounts[postCounts.length - 1] : { likes: 0, comments: 0, date: '' };
   const totalTokens = calculateTokens(
     latestCount.likes,
-    latestCount.views,
+    latestCount.comments,
     tokenSettings.likesToToken,
-    tokenSettings.viewsToToken
+    tokenSettings.commentsToToken
   );
 
   return (
@@ -108,7 +120,7 @@ export default function PostCard({ post, kols, tokenSettings, onUpdate, onDelete
         <div className="flex justify-between items-center">
           <div>
             <CardTitle>{post.kol_name || getKolName(post.kol_id, kols) || 'Unknown KOL'}</CardTitle>
-            <p className="text-sm text-muted-foreground">Created: {formatDate(post.creation_date)}</p>
+            <p className="text-sm text-muted-foreground">Created: {new Date(post.creation_date).toLocaleString()}</p>
           </div>
           <Badge variant="secondary">
             {totalTokens} tokens
@@ -116,45 +128,54 @@ export default function PostCard({ post, kols, tokenSettings, onUpdate, onDelete
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        <p className="text-sm text-muted-foreground truncate">{post.url}</p>
-        {counts.map((count, index) => (
-          <div key={index} className="space-y-1">
-            <p className="font-medium">Count {index + 1} ({formatDate(count.date)})</p>
-            {manualMode ? (
-              <div className="flex justify-between space-x-2">
-                <Input
-                  type="date"
-                  value={count.date}
-                  onChange={(e) => handleCountChange(index, 'date', e.target.value)}
-                  disabled={isLoading}
-                />
-                <Input
-                  type="number"
-                  value={count.likes}
-                  onChange={(e) => handleCountChange(index, 'likes', e.target.value)}
-                  placeholder="Likes"
-                  disabled={isLoading}
-                />
-                <Input
-                  type="number"
-                  value={count.views}
-                  onChange={(e) => handleCountChange(index, 'views', e.target.value)}
-                  placeholder="Views"
-                  disabled={isLoading}
-                />
-                <Button variant="destructive" onClick={() => handleRemoveCount(index)} disabled={isLoading}>
-                  <Minus className="h-4 w-4" />
-                </Button>
-              </div>
-            ) : (
-              <div className="flex justify-between">
-                <span className="flex items-center"><ThumbsUp className="mr-1 h-4 w-4" /> {count.likes}</span>
-                <span className="flex items-center"><Eye className="mr-1 h-4 w-4" /> {count.views}</span>
-                <span className="flex items-center"><Coins className="mr-1 h-4 w-4" /> {calculateTokens(count.likes, count.views, tokenSettings.likesToToken, tokenSettings.viewsToToken)}</span>
-              </div>
-            )}
+        <a href={post.url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-500 hover:underline truncate block">
+          {post.url}
+        </a>
+        {counts.length > 0 ? (
+          counts.map((count, index) => (
+            <div key={index} className="space-y-1">
+              <p className="font-medium">Count {index + 1} ({count.date})</p>
+              {manualMode ? (
+                <div className="flex justify-between space-x-2">
+                  <Input
+                    type="date"
+                    value={count.date}
+                    onChange={(e) => handleCountChange(index, 'date', e.target.value)}
+                    disabled={isLoading}
+                  />
+                  <Input
+                    type="number"
+                    value={count.likes}
+                    onChange={(e) => handleCountChange(index, 'likes', e.target.value)}
+                    placeholder="Likes"
+                    disabled={isLoading}
+                  />
+                  <Input
+                    type="number"
+                    value={count.comments}
+                    onChange={(e) => handleCountChange(index, 'comments', e.target.value)}
+                    placeholder="Comments"
+                    disabled={isLoading}
+                  />
+                  <Button variant="destructive" onClick={() => handleRemoveCount(index)} disabled={isLoading}>
+                    <Minus className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex justify-between">
+                  <span className="flex items-center"><ThumbsUp className="mr-1 h-4 w-4" /> {count.likes}</span>
+                  <span className="flex items-center"><MessageCircle className="mr-1 h-4 w-4" /> {count.comments}</span>
+                  <span className="flex items-center"><Coins className="mr-1 h-4 w-4" /> {calculateTokens(count.likes, count.comments, tokenSettings.likesToToken, tokenSettings.commentsToToken)}</span>
+                </div>
+              )}
+            </div>
+          ))
+        ) : (
+          <div>
+            <p>No counts available</p>
+            <Button onClick={handleAddCount}>Add Initial Count</Button>
           </div>
-        ))}
+        )}
         <div className="flex items-center justify-between">
           <span>Manual Input Mode</span>
           <Switch 
@@ -168,7 +189,7 @@ export default function PostCard({ post, kols, tokenSettings, onUpdate, onDelete
           </Button>
         )}
         <div className="flex space-x-2">
-          <Button onClick={() => onFetch(post.id)} className="flex-1" disabled={isLoading}>
+          <Button onClick={handleFetch} className="flex-1" disabled={isLoading}>
             <RefreshCw className="mr-2 h-4 w-4" /> Fetch
           </Button>
           <Button variant="destructive" onClick={() => onDelete(post.id)} className="flex-1" disabled={isLoading}>
@@ -182,7 +203,7 @@ export default function PostCard({ post, kols, tokenSettings, onUpdate, onDelete
             </p>
             <div className="flex justify-between mt-2">
               <span className="flex items-center"><ThumbsUp className="mr-1 h-4 w-4" /> {post.lastFetch.likes}</span>
-              <span className="flex items-center"><Eye className="mr-1 h-4 w-4" /> {post.lastFetch.views}</span>
+              <span className="flex items-center"><MessageCircle className="mr-1 h-4 w-4" /> {post.lastFetch.comments}</span>
               <span className="flex items-center"><Coins className="mr-1 h-4 w-4" /> {post.lastFetch.tokens}</span>
             </div>
           </div>

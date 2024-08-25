@@ -9,7 +9,7 @@ import { calculateTokens, formatDate, getKolName } from '@/lib/utils';
 interface AnalyticsProps {
   posts: any[];
   kols: any[];
-  tokenSettings: { likesToToken: number; viewsToToken: number; };
+  tokenSettings: { likesToToken: number; commentsToToken: number; };
 }
 
 export default function Analytics({ posts, kols, tokenSettings }: AnalyticsProps) {
@@ -26,12 +26,12 @@ export default function Analytics({ posts, kols, tokenSettings }: AnalyticsProps
     return {
       name: kol.name,
       totalLikes: kolPosts.reduce((sum, post) => sum + (post.counts[post.counts.length - 1]?.likes || 0), 0),
-      totalViews: kolPosts.reduce((sum, post) => sum + (post.counts[post.counts.length - 1]?.views || 0), 0),
+      totalComments: kolPosts.reduce((sum, post) => sum + (post.counts[post.counts.length - 1]?.comments || 0), 0),
       totalTokens: kolPosts.reduce((sum, post) => sum + calculateTokens(
         post.counts[post.counts.length - 1]?.likes || 0, 
-        post.counts[post.counts.length - 1]?.views || 0,
+        post.counts[post.counts.length - 1]?.comments || 0,
         tokenSettings.likesToToken,
-        tokenSettings.viewsToToken
+        tokenSettings.commentsToToken
       ), 0)
     };
   });
@@ -53,7 +53,7 @@ export default function Analytics({ posts, kols, tokenSettings }: AnalyticsProps
                 <Tooltip labelFormatter={formatDate} />
                 <Legend />
                 <Line yAxisId="left" type="monotone" dataKey="likes" stroke="#8884d8" name="Likes" />
-                <Line yAxisId="right" type="monotone" dataKey="views" stroke="#82ca9d" name="Views" />
+                <Line yAxisId="right" type="monotone" dataKey="comments" stroke="#82ca9d" name="Comments" />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -73,7 +73,7 @@ export default function Analytics({ posts, kols, tokenSettings }: AnalyticsProps
                 <Tooltip />
                 <Legend />
                 <Bar dataKey="totalLikes" fill="#8884d8" name="Total Likes" />
-                <Bar dataKey="totalViews" fill="#82ca9d" name="Total Views" />
+                <Bar dataKey="totalComments" fill="#82ca9d" name="Total Comments" />
                 <Bar dataKey="totalTokens" fill="#ffc658" name="Total Tokens" />
               </BarChart>
             </ResponsiveContainer>

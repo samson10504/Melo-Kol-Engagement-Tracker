@@ -9,12 +9,12 @@ generator client {
 }
 
 model Post {
-  id             Int      @id @default(autoincrement())
-  url            String
-  kol_id         Int
-  creation_date  DateTime
-  counts         Json
-  kol            Kol      @relation(fields: [kol_id], references: [id])
+  id            Int      @id @default(autoincrement())
+  url           String
+  kol_id        Int
+  creation_date DateTime @db.Timestamp
+  counts        Json
+  kol           Kol      @relation(fields: [kol_id], references: [id])
 }
 
 model Kol {
