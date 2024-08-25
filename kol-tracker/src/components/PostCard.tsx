@@ -13,6 +13,23 @@ import { Switch } from "@/components/ui/switch";
 import { Trash2, Plus, Minus, RefreshCw, ThumbsUp, Eye, Coins, Calendar } from 'lucide-react';
 import { calculateTokens, formatDate, getKolName } from '@/lib/utils';
 
+interface PostCardProps {
+  post: {
+    id: string;
+    kol_id: string;
+    kol_name?: string;
+    url: string;
+    creation_date: string;
+    counts: Array<{ date: string; likes: number; views: number }>;
+    lastFetch?: { date: string; likes: number; views: number; tokens: number };
+  };
+  kols: Array<{ id: string; name: string }>;
+  tokenSettings: { likesToToken: number; viewsToToken: number };
+  onUpdate: (id: string, counts: Array<{ date: string; likes: number; views: number }>) => Promise<void>;
+  onDelete: (id: string) => void;
+  onFetch: (id: string) => void;
+}
+
 export default function PostCard({ post, kols, tokenSettings, onUpdate, onDelete, onFetch }: PostCardProps) {
   const [manualMode, setManualMode] = useState(false);
   const [counts, setCounts] = useState(post.counts);
