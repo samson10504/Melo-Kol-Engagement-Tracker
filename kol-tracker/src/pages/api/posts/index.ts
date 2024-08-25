@@ -30,13 +30,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       };
       res.status(201).json(newPost);
     } else if (req.method === 'DELETE') {
-      const postId = Array.isArray(req.query.id) ? req.query.id[0] : req.query.id;
+      const postId = req.query.id;
       if (typeof postId !== 'string') {
         res.status(400).json({ error: 'Invalid post ID' });
         return;
       }
-      await sql`DELETE FROM posts WHERE id = ${postId}`;
-      res.status(204).end();
+      try {
+        await sql`DELETE FROM posts WHERE id = ${postId}`;
+        res.status(204).end();
+      } catch (error) {
+        console.error('Error deleting post:', error);
+        res.status(500).json({ error: 'Error deleting post' });
+      }
     } else {
       res.status(405).json({ error: 'Method not allowed' });
     }

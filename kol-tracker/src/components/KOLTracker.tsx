@@ -131,12 +131,17 @@ export default function KOLTracker() {
   const handleDeletePost = useCallback(async (id: string) => {
     try {
       setIsLoading(true);
-      await fetch(`/api/posts/${id}`, { method: 'DELETE' });
+      const response = await fetch(`/api/posts/${id}`, { method: 'DELETE' });
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Error response from server:', errorData);
+        throw new Error(`Failed to delete post: ${errorData.error || 'Unknown error'}`);
+      }
       setPosts(prevPosts => prevPosts.filter(post => post.id !== id));
       showAlert('Post deleted successfully', 'success');
     } catch (error) {
       console.error('Error deleting post:', error);
-      showAlert('Error deleting post', 'error');
+      showAlert(`Error deleting post: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
     } finally {
       setIsLoading(false);
     }
