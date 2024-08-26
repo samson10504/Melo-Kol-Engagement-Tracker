@@ -1,6 +1,3 @@
-// File: src/pages/api/posts/[id]/fetch.ts
-
-
 import { NextApiRequest, NextApiResponse } from 'next';
 import { ApifyClient } from 'apify-client';
 import sql from '../../../../lib/db';
@@ -16,6 +13,13 @@ interface InstagramPost {
   url?: string;
   [key: string]: unknown;
 }
+
+export const config = {
+  api: {
+    bodyParser: false,
+    externalResolver: true,
+  },
+};
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
