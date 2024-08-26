@@ -120,7 +120,7 @@ export default function PostCard({ post, kols, tokenSettings, onUpdate, onDelete
         <div className="flex justify-between items-center">
           <div>
             <CardTitle>{post.kol_name || getKolName(post.kol_id, kols) || 'Unknown KOL'}</CardTitle>
-            <p className="text-sm text-muted-foreground">Created: {new Date(post.creation_date).toLocaleString()}</p>
+            <p className="text-sm text-muted-foreground">Post Created: {new Date(post.creation_date).toLocaleString()}</p>
           </div>
           <Badge variant="secondary">
             {totalTokens} tokens

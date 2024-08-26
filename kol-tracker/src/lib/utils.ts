@@ -11,15 +11,10 @@ export const calculateTokens = (likes: number, comments: number, likesToToken: n
   return Math.floor(likes / likesToToken) + Math.floor(comments / commentsToToken);
 };
 
-export const formatDate = (dateString: string, useHKTime = false) => {
-  if (!dateString) return 'N/A';
-  const date = new Date(dateString);
-  if (isNaN(date.getTime())) return dateString; // Return the original string if it's an invalid date
-  if (useHKTime) {
-    return date.toLocaleString('en-HK', { timeZone: 'Asia/Hong_Kong' });
-  }
-  return dateString; // Return the original date string for creation_date
-};
+export function formatDate(date: string | number | Date): string {
+  const d = new Date(date);
+  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+}
 
 export const getKolName = (kolId: number, kols: any[]): string => {
   const kol = kols.find(k => k.id === kolId);
