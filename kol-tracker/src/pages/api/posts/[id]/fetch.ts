@@ -2,10 +2,6 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { ApifyClient } from 'apify-client';
 import sql from '../../../../lib/db';
 
-const client = new ApifyClient({
-  token: process.env.APIFY_API_TOKEN,
-});
-
 interface InstagramPost {
   timestamp?: string;
   likesCount?: number;
@@ -13,6 +9,31 @@ interface InstagramPost {
   url?: string;
   [key: string]: unknown;
 }
+
+interface ApifyRunResult {
+  id: string;
+  status: string;
+  startedAt: string;
+  finishedAt: string;
+  buildId: string;
+  exitCode: number;
+  defaultKeyValueStoreId: string;
+  defaultDatasetId: string;
+  defaultRequestQueueId: string;
+  containerUrl: string | null;
+  datasetItems: number;
+  keyValueStoreItems: number;
+  requestQueueItems: number;
+  usageTotalUsd: number;
+  isStatusMessageTerminal: boolean;
+  statusMessage: string;
+}
+
+const client = new ApifyClient({
+  token: process.env.APIFY_API_TOKEN,
+});
+
+const APIFY_TIMEOUT = 15000; // 15 seconds
 
 export const config = {
   api: {
@@ -48,22 +69,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const post = rows[0];
     console.log('Post data from database:', post);
 
-    // Extract the Instagram post ID and username from the URL
-    const urlParts = post.url.split('/').filter(Boolean);
-    const instagramPostId = urlParts[urlParts.length - 1];
-    const username = urlParts[urlParts.length - 3];
+    // Extract the Instagram post ID from the URL
+    const instagramPostId = post.url.split('/').pop()?.split('?')[0];
     console.log('Extracted Instagram post ID:', instagramPostId);
-    console.log('Extracted username:', username);
 
     // Prepare Actor input
     const input = {
-      "username": [post.url],
+      "postUrls": [post.url],
       "resultsLimit": 1
     };
     console.log('Actor input:', input);
 
-    // Run the Actor and wait for it to finish
-    const run = await client.actor("apify/instagram-post-scraper").call(input);
+    // Run the Actor with a timeout
+    const runPromise = client.actor("apify/instagram-post-scraper").call(input);
+    const timeoutPromise = new Promise<never>((_, reject) => 
+      setTimeout(() => reject(new Error('Apify request timeout')), APIFY_TIMEOUT)
+    );
+
+    const run = await Promise.race([runPromise, timeoutPromise]) as unknown as ApifyRunResult;
     console.log('Actor run result:', run);
 
     // Fetch Actor results from the run's dataset
