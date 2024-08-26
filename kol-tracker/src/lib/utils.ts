@@ -7,8 +7,8 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-export const calculateTokens = (likes: number, comments: number, likesToToken: number, commentsToToken: number) => {
-  return Math.floor(likes / likesToToken) + Math.floor(comments / commentsToToken);
+export const calculateTokens = (likes: number, comments: number, tokensPerLike: number, tokensPerComment: number) => {
+  return (likes * tokensPerLike) + (comments * tokensPerComment);
 };
 
 export function formatDate(date: string | number | Date): string {

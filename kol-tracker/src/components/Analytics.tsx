@@ -9,7 +9,7 @@ import { calculateTokens, formatDate, getKolName } from '@/lib/utils';
 interface AnalyticsProps {
   posts: any[];
   kols: any[];
-  tokenSettings: { likesToToken: number; commentsToToken: number; };
+  tokenSettings: { tokensPerLike: number; tokensPerComment: number; };
 }
 
 export default function Analytics({ posts, kols, tokenSettings }: AnalyticsProps) {
@@ -37,7 +37,7 @@ export default function Analytics({ posts, kols, tokenSettings }: AnalyticsProps
         const latestCount = post.counts && post.counts.length > 0 ? post.counts[post.counts.length - 1] : null;
         return sum + (latestCount ? latestCount.comments : 0);
       }, 0);
-      const totalTokens = calculateTokens(totalLikes, totalComments, tokenSettings.likesToToken, tokenSettings.commentsToToken);
+      const totalTokens = calculateTokens(totalLikes, totalComments, tokenSettings.tokensPerLike, tokenSettings.tokensPerComment);
       
       return {
         name: kol.name,

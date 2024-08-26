@@ -27,8 +27,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try {
       const { rows } = await sql`
         UPDATE posts
-        SET counts = ${JSON.stringify(counts)},
-            creation_date = ${new Date().toISOString()}
+        SET counts = ${JSON.stringify(counts)}
         WHERE id = ${postId}
         RETURNING *
       `;

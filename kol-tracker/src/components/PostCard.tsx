@@ -38,8 +38,8 @@ interface KOL {
 }
 
 interface TokenSettings {
-  likesToToken: number;
-  commentsToToken: number;
+  tokensPerLike: number;
+  tokensPerComment: number;
 }
 
 interface PostCardProps {
@@ -51,8 +51,11 @@ interface PostCardProps {
   onFetch: (id: string) => void;
 }
 
-export default function PostCard({ post, kols, tokenSettings, onUpdate, onDelete, onFetch }: PostCardProps) {
-  const [manualMode, setManualMode] = useState<boolean>(false);
+const PostCard: React.FC<PostCardProps> = ({ post, kols, tokenSettings, onUpdate, onDelete, onFetch }) => {
+  const [isManualMode, setIsManualMode] = useState(false);
+  const [manualLikes, setManualLikes] = useState('');
+  const [manualComments, setManualComments] = useState('');
+  
   const [counts, setCounts] = useState<Count[]>(post.counts || []);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
@@ -70,7 +73,11 @@ export default function PostCard({ post, kols, tokenSettings, onUpdate, onDelete
   const handleUpdateCounts = useCallback(async () => {
     try {
       setIsLoading(true);
-      await onUpdate(post.id, counts);
+      const updatedCounts = counts.map(count => ({
+        ...count,
+        date: count.date || new Date().toISOString().split('T')[0]
+      }));
+      await onUpdate(post.id, updatedCounts);
     } catch (error) {
       console.error('Error updating post:', error);
     } finally {
@@ -87,12 +94,9 @@ export default function PostCard({ post, kols, tokenSettings, onUpdate, onDelete
     setCounts(prevCounts => prevCounts.filter((_, i) => i !== index));
   }, []);
 
-  const handleManualModeChange = useCallback(async (checked: boolean) => {
-    setManualMode(checked);
-    if (!checked) {
-      await handleUpdateCounts();
-    }
-  }, [handleUpdateCounts]);
+  const handleManualModeChange = useCallback((checked: boolean) => {
+    setIsManualMode(checked);
+  }, []);
 
   const handleFetch = useCallback(async () => {
     try {
@@ -105,13 +109,27 @@ export default function PostCard({ post, kols, tokenSettings, onUpdate, onDelete
     }
   }, [post.id, onFetch]);
 
+  const handleManualUpdate = () => {
+    const newCount = {
+      date: new Date().toISOString(),
+      likes: parseInt(manualLikes) || 0,
+      comments: parseInt(manualComments) || 0,
+    };
+    
+    const updatedCounts = [...post.counts, newCount];
+    onUpdate(post.id, updatedCounts);
+    
+    setManualLikes('');
+    setManualComments('');
+  };
+
   const postCounts = post.counts || [];
   const latestCount = postCounts.length > 0 ? postCounts[postCounts.length - 1] : { likes: 0, comments: 0, date: '' };
   const totalTokens = calculateTokens(
     latestCount.likes,
     latestCount.comments,
-    tokenSettings.likesToToken,
-    tokenSettings.commentsToToken
+    tokenSettings.tokensPerLike,
+    tokenSettings.tokensPerComment
   );
 
   return (
@@ -135,7 +153,7 @@ export default function PostCard({ post, kols, tokenSettings, onUpdate, onDelete
           counts.map((count, index) => (
             <div key={index} className="space-y-1">
               <p className="font-medium">Count {index + 1} ({count.date})</p>
-              {manualMode ? (
+              {isManualMode ? (
                 <div className="flex justify-between space-x-2">
                   <Input
                     type="date"
@@ -165,7 +183,7 @@ export default function PostCard({ post, kols, tokenSettings, onUpdate, onDelete
                 <div className="flex justify-between">
                   <span className="flex items-center"><ThumbsUp className="mr-1 h-4 w-4" /> {count.likes}</span>
                   <span className="flex items-center"><MessageCircle className="mr-1 h-4 w-4" /> {count.comments}</span>
-                  <span className="flex items-center"><Coins className="mr-1 h-4 w-4" /> {calculateTokens(count.likes, count.comments, tokenSettings.likesToToken, tokenSettings.commentsToToken)}</span>
+                  <span className="flex items-center"><Coins className="mr-1 h-4 w-4" /> {calculateTokens(count.likes, count.comments, tokenSettings.tokensPerLike, tokenSettings.tokensPerComment)}</span>
                 </div>
               )}
             </div>
@@ -179,11 +197,11 @@ export default function PostCard({ post, kols, tokenSettings, onUpdate, onDelete
         <div className="flex items-center justify-between">
           <span>Manual Input Mode</span>
           <Switch 
-            checked={manualMode} 
+            checked={isManualMode} 
             onCheckedChange={handleManualModeChange}
           />
         </div>
-        {manualMode && (
+        {isManualMode && (
           <Button onClick={handleAddCount} className="w-full" disabled={isLoading}>
             <Plus className="mr-2 h-4 w-4" /> Add Count
           </Button>
@@ -211,4 +229,6 @@ export default function PostCard({ post, kols, tokenSettings, onUpdate, onDelete
       </CardContent>
     </Card>
   );
-}
+};
+
+export default PostCard;

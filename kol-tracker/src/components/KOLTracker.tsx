@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { ThumbsUp, MessageCircle, Coins, RefreshCw, UserPlus, UserMinus, Calendar, Settings, Filter, PlusCircle, Database } from 'lucide-react';
+import { ThumbsUp, MessageCircle, Coins, RefreshCw, UserPlus, UserMinus, Calendar, Settings, Filter, PlusCircle, Database, Loader2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { calculateTokens, formatDate, getKolName, getKolAvatar } from '@/lib/utils';
 import PostCard from './PostCard';
@@ -23,7 +23,7 @@ import { mockPosts, mockKols } from '@/data/mockData';
 export default function KOLTracker() {
   const [posts, setPosts] = useState<any[]>([]);
   const [kols, setKols] = useState<any[]>([]);
-  const [tokenSettings, setTokenSettings] = useState({ likesToToken: 1, commentsToToken: 5 });
+  const [tokenSettings, setTokenSettings] = useState({ tokensPerLike: 1, tokensPerComment: 5 });
   const [newPost, setNewPost] = useState({ url: '', kolId: '' });
   const [newKol, setNewKol] = useState({ name: '', avatar: '' });
   const [alert, setAlert] = useState<{ message: string; type: string } | null>(null);
@@ -268,8 +268,8 @@ export default function KOLTracker() {
       const postTokens = calculateTokens(
         latestCount.likes || 0,
         latestCount.comments || 0,
-        tokenSettings.likesToToken,
-        tokenSettings.commentsToToken
+        tokenSettings.tokensPerLike,
+        tokenSettings.tokensPerComment
       );
 
       return {
@@ -339,8 +339,18 @@ export default function KOLTracker() {
   };
 
   return (
-    <div className="container mx-auto p-4">
-      <h1 className="text-3xl font-bold mb-6">KOL Instagram Engagement Tracker</h1>
+    <div className="container mx-auto p-4 space-y-6">
+      <header className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold">KOL Instagram Engagement Tracker</h1>
+        <div className="flex space-x-2">
+          <Button onClick={fetchAllUpdates} disabled={isLoading}>
+            <RefreshCw className="mr-2 h-4 w-4" /> Fetch All
+          </Button>
+          <Button onClick={importMockData} disabled={isLoading} variant="secondary">
+            <Database className="mr-2 h-4 w-4" /> Import Mock Data
+          </Button>
+        </div>
+      </header>
 
       {alert && (
         <Alert className="mb-4" variant={alert.type === 'error' ? 'destructive' : 'default'}>
@@ -349,37 +359,42 @@ export default function KOLTracker() {
         </Alert>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardHeader>
-            <CardTitle>Total Engagement</CardTitle>
+            <CardTitle className="flex items-center">
+              <Coins className="mr-2 h-5 w-5 text-yellow-500" />
+              Total Engagement
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center space-x-2">
-              <ThumbsUp className="text-green-500" />
-              <span>Likes:</span>
-              <span className="font-bold">{totalEngagement.likes}</span>
+            <div className="flex items-center justify-between">
+              <span className="flex items-center"><ThumbsUp className="mr-2 h-4 w-4 text-green-500" /> Likes:</span>
+              <span className="font-bold text-lg">{totalEngagement.likes.toLocaleString()}</span>
             </div>
-            <div className="flex items-center space-x-2">
-              <MessageCircle className="text-blue-500" />
-              <span>Comments:</span>
-              <span className="font-bold">{totalEngagement.comments}</span>
+            <div className="flex items-center justify-between">
+              <span className="flex items-center"><MessageCircle className="mr-2 h-4 w-4 text-blue-500" /> Comments:</span>
+              <span className="font-bold text-lg">{totalEngagement.comments.toLocaleString()}</span>
             </div>
-            <div className="flex items-center space-x-2">
-              <Coins className="text-yellow-500" />
-              <span>Tokens:</span>
-              <span className="font-bold">{totalEngagement.tokens}</span>
+            <div className="flex items-center justify-between">
+              <span className="flex items-center"><Coins className="mr-2 h-4 w-4 text-yellow-500" /> Tokens:</span>
+              <span className="font-bold text-lg">{totalEngagement.tokens.toLocaleString()}</span>
             </div>
           </CardContent>
         </Card>
+
         <Card>
           <CardHeader>
-            <CardTitle>Filters</CardTitle>
+            <CardTitle className="flex items-center">
+              <Filter className="mr-2 h-5 w-5" />
+              Filters
+            </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
+          <CardContent className="space-y-4">
+            <div>
+              <Label htmlFor="kolFilter" className="mb-2 block">Select KOL</Label>
               <Select value={selectedKol} onValueChange={setSelectedKol}>
-                <SelectTrigger className="w-full">
+                <SelectTrigger id="kolFilter" className="w-full">
                   <SelectValue placeholder="Select a KOL" />
                 </SelectTrigger>
                 <SelectContent>
@@ -389,14 +404,19 @@ export default function KOLTracker() {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+            <div>
+              <Label htmlFor="dateFilterStart" className="mb-2 block">Date Range</Label>
               <div className="flex space-x-2">
                 <Input
+                  id="dateFilterStart"
                   type="date"
                   value={dateFilter.start}
                   onChange={(e) => setDateFilter({ ...dateFilter, start: e.target.value })}
                   className="w-full"
                 />
                 <Input
+                  id="dateFilterEnd"
                   type="date"
                   value={dateFilter.end}
                   onChange={(e) => setDateFilter({ ...dateFilter, end: e.target.value })}
@@ -406,44 +426,40 @@ export default function KOLTracker() {
             </div>
           </CardContent>
         </Card>
+
         <Card>
-          <CardHeader>
-            <CardTitle>Token Settings</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <div>
-                <Label htmlFor="likesToToken">Likes per Token</Label>
-                <Input
-                  id="likesToToken"
-                  type="number"
-                  value={tokenSettings.likesToToken}
-                  onChange={(e) => setTokenSettings(prev => ({ ...prev, likesToToken: parseInt(e.target.value) }))}
-                />
-              </div>
-              <div>
-                <Label htmlFor="commentsToToken">Comments per Token</Label>
-                <Input
-                  id="commentsToToken"
-                  type="number"
-                  value={tokenSettings.commentsToToken}
-                  onChange={(e) => setTokenSettings(prev => ({ ...prev, commentsToToken: parseInt(e.target.value) }))}
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <Settings className="mr-2 h-5 w-5" />
+            Token Settings
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <Label htmlFor="tokensPerLike" className="mb-2 block">Tokens per Like</Label>
+            <Input
+              id="tokensPerLike"
+              type="number"
+              min="0"
+              step="0.01"
+              value={tokenSettings.tokensPerLike}
+              onChange={(e) => setTokenSettings(prev => ({ ...prev, tokensPerLike: parseFloat(e.target.value) }))}
+            />
+          </div>
+          <div>
+            <Label htmlFor="tokensPerComment" className="mb-2 block">Tokens per Comment</Label>
+            <Input
+              id="tokensPerComment"
+              type="number"
+              min="0"
+              step="0.01"
+              value={tokenSettings.tokensPerComment}
+              onChange={(e) => setTokenSettings(prev => ({ ...prev, tokensPerComment: parseFloat(e.target.value) }))}
+            />
+          </div>
+        </CardContent>
+      </Card>
       </div>
-      
-      <div className="flex justify-between items-center mb-6">
-        <Button onClick={fetchAllUpdates} disabled={isLoading}>
-          <RefreshCw className="mr-2 h-4 w-4" /> Fetch All
-        </Button>
-        <Button onClick={importMockData} disabled={isLoading}>
-          <Database className="mr-2 h-4 w-4" /> Import Mock Data
-        </Button>
-      </div>
-      
 
       <Tabs defaultValue="posts" className="space-y-4">
         <TabsList className="grid w-full grid-cols-4">
@@ -455,26 +471,35 @@ export default function KOLTracker() {
 
         <TabsContent value="posts">
           <ScrollArea className="h-[600px] rounded-md border p-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredPosts.map((post) => (
-                <PostCard 
-                  key={post.id} 
-                  post={post} 
-                  kols={kols}
-                  tokenSettings={tokenSettings}
-                  onUpdate={handleUpdatePost}
-                  onDelete={handleDeletePost}
-                  onFetch={fetchPostUpdate}
-                />
-              ))}
-            </div>
+            {isLoading ? (
+              <div className="flex justify-center items-center h-full">
+                <Loader2 className="h-8 w-8 animate-spin" />
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredPosts.map((post) => (
+                  <PostCard 
+                    key={post.id} 
+                    post={post} 
+                    kols={kols}
+                    tokenSettings={tokenSettings}
+                    onUpdate={handleUpdatePost}
+                    onDelete={handleDeletePost}
+                    onFetch={fetchPostUpdate}
+                  />
+                ))}
+              </div>
+            )}
           </ScrollArea>
         </TabsContent>
 
         <TabsContent value="create">
           <Card>
             <CardHeader>
-              <CardTitle>Create New Post</CardTitle>
+              <CardTitle className="flex items-center">
+                <PlusCircle className="mr-2 h-5 w-5" />
+                Create New Post
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleCreatePost} className="space-y-4">
@@ -501,7 +526,10 @@ export default function KOLTracker() {
                     </SelectContent>
                   </Select>
                 </div>
-                <Button type="submit" disabled={isLoading}>Create Post</Button>
+                <Button type="submit" disabled={isLoading}>
+                  {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
+                  Create Post
+                </Button>
               </form>
             </CardContent>
           </Card>
@@ -510,7 +538,10 @@ export default function KOLTracker() {
         <TabsContent value="kols">
           <Card>
             <CardHeader>
-              <CardTitle>Manage KOLs</CardTitle>
+              <CardTitle className="flex items-center">
+                <UserPlus className="mr-2 h-5 w-5" />
+                Manage KOLs
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleCreateKol} className="space-y-4 mb-4">
@@ -525,12 +556,13 @@ export default function KOLTracker() {
                   />
                 </div>
                 <Button type="submit" disabled={isLoading || !newKol.name.trim()}>
-                  <UserPlus className="mr-2 h-4 w-4" /> Add KOL
+                  {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserPlus className="mr-2 h-4 w-4" />}
+                  Add KOL
                 </Button>
               </form>
               <div className="space-y-2">
                 {kols.map(kol => (
-                  <div key={kol.id} className="flex items-center justify-between p-2 border rounded">
+                  <div key={kol.id} className="flex items-center justify-between p-2 border rounded hover:bg-gray-50 transition-colors">
                     <div className="flex items-center space-x-2">
                       <Avatar>
                         <AvatarImage src={kol.avatar} alt={kol.name} />
