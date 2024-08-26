@@ -75,7 +75,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Prepare Actor input
     const input = {
-      "postUrls": [post.url],
+      "username": [post.url],
       "resultsLimit": 1
     };
     console.log('Actor input:', input);
