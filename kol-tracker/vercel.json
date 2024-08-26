@@ -1,0 +1,7 @@
+{
+    "functions": {
+      "api/posts/[id]/fetch.ts": {
+        "maxDuration": 60
+      }
+    }
+  }
