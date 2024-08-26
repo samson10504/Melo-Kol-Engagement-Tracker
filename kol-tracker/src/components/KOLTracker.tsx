@@ -304,17 +304,35 @@ export default function KOLTracker() {
     setIsLoading(true);
     showAlert('Fetching updates for all posts...', 'info');
     try {
-      const updatedPosts = await Promise.all(posts.map(post => 
-        fetch(`/api/posts/${post.id}/fetch`).then(res => {
-          if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-          return res.json();
-        })
-      ));
-      setPosts(updatedPosts);
-      showAlert('All posts updated successfully', 'success');
+      const response = await fetch('/api/posts/fetch-all/fetch', {
+        method: 'POST',
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const updatedPosts = await response.json();
+      
+      // Update the posts state with the new data
+      setPosts(prevPosts => {
+        const updatedPostsMap = new Map(updatedPosts.map((post: { url: string, id: string | number }) => [post.url, post]));
+        return prevPosts.map((post: any) => {
+          const updatedPost = updatedPostsMap.get(post.url);
+          if (updatedPost) {
+            console.log(`Updating post ${post.id} with new data:`, updatedPost);
+            return { ...post, ...updatedPost };
+          }
+          console.log(`No update found for post ${post.id}, keeping original data`);
+          return post;
+        });
+      });
+
+      const updatedCount = updatedPosts.filter((post: any) => post.counts && post.counts.length > 0).length;
+      showAlert(`${updatedCount} posts updated successfully`, 'success');
     } catch (error) {
-      console.error('Error updating some posts:', error);
-      showAlert('Error updating some posts', 'error');
+      console.error('Error updating posts:', error);
+      showAlert(`Error updating posts: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
     } finally {
       setIsLoading(false);
     }
