@@ -194,7 +194,7 @@ async function fetchAndUpdatePost(post: any) {
   return updatedRows[0];
 }
 
-async function updatePostInDatabase(post: any, item: InstagramPost) {
+export async function updatePostInDatabase(post: any, item: InstagramPost) {
   const currentDate = new Date().toLocaleString('en-HK', { timeZone: 'Asia/Hong_Kong' });
   const updatedCounts = [
     ...(Array.isArray(post.counts) ? post.counts : []),

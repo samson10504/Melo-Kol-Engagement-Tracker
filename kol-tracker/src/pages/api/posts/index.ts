@@ -1,6 +1,12 @@
 // File: src/pages/api/posts/index.ts
 import { NextApiRequest, NextApiResponse } from 'next';
 import sql from '../../../lib/db';
+import { ApifyClient } from 'apify-client';
+import { updatePostInDatabase } from './[id]/fetch';
+
+const client = new ApifyClient({
+  token: process.env.APIFY_API_TOKEN,
+});
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -16,20 +22,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }));
       res.status(200).json(postsWithParsedCounts);
     } else if (req.method === 'POST') {
-      const { url, kol_id, creation_date, counts } = req.body;
-      const countsString = JSON.stringify(counts);
-      const { rows } = await sql`
-        INSERT INTO posts (url, kol_id, creation_date, counts)
-        VALUES (${url}, ${kol_id}, ${creation_date || new Date().toISOString()}, ${countsString})
-        RETURNING *
-      `;
-      const { rows: kolRows } = await sql`SELECT name FROM kols WHERE id = ${kol_id}`;
-      const newPost = {
-        ...rows[0],
-        kol_name: kolRows[0]?.name || 'Unknown KOL',
-        counts: counts || [{ date: new Date().toISOString().split('T')[0], likes: 0, comments: 0 }]
-      };
-      res.status(201).json(newPost);
+      await handleCreateMultiple(req, res);
     } else if (req.method === 'DELETE') {
       const postId = req.query.id;
       if (typeof postId !== 'string') {
@@ -54,3 +47,59 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
   }
 }
+
+async function handleCreateMultiple(req: NextApiRequest, res: NextApiResponse) {
+  try {
+    const { posts } = req.body;
+    if (!Array.isArray(posts) || posts.length === 0) {
+      return res.status(400).json({ error: 'Invalid or empty posts array' });
+    }
+    const createdPosts = [];
+
+    // Create posts in the database
+    for (const post of posts) {
+      const { url, kol_id } = post;
+      const { rows } = await sql`
+        INSERT INTO posts (url, kol_id, creation_date, counts)
+        VALUES (${url}, ${parseInt(kol_id, 10)}, ${new Date().toISOString()}, '[]'::jsonb)
+        RETURNING *
+      `;
+      const { rows: kolRows } = await sql`SELECT name FROM kols WHERE id = ${parseInt(kol_id, 10)}`;
+      const newPost = {
+        ...rows[0],
+        kol_name: kolRows[0]?.name || 'Unknown KOL',
+        counts: [],
+        url: url,
+        id: rows[0].id
+      };
+      createdPosts.push(newPost);
+    }
+
+    // Fetch updates for all created posts
+    const postUrls = createdPosts.map(post => post.url);
+    const input = {
+      "username": postUrls,
+      "resultsLimit": postUrls.length
+    };
+
+    const run = await client.actor("apify/instagram-post-scraper").call(input);
+    const { items } = await client.dataset(run.defaultDatasetId).listItems();
+
+    // Update posts with fetched data
+    const updatedPosts = await Promise.all(createdPosts.map(async (post) => {
+      const matchingItem = items.find((item: any) => item.url === post.url || item.shortCode === post.url.split('/').pop());
+      if (matchingItem) {
+        return await updatePostInDatabase(post, matchingItem);
+      }
+      return post;
+    }));
+
+    console.log('Created and updated posts:', updatedPosts);
+    res.status(201).json(updatedPosts);
+  } catch (error) {
+    console.error('Error creating and updating multiple posts:', error);
+    res.status(500).json({ error: 'Error creating and updating multiple posts', details: error instanceof Error ? error.message : String(error) });
+  }
+}
+
+// Make sure to include the updatePostInDatabase function from your existing code
