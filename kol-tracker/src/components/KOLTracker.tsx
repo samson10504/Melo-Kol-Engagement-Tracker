@@ -63,7 +63,11 @@ export default function KOLTracker() {
       const response = await fetch('/api/kols');
       const data = await response.json();
       console.log('KOLs API response:', data);
-      setKols(Array.isArray(data) ? data : []);
+      const formattedKols = Array.isArray(data) ? data.map(kol => ({
+        ...kol,
+        id: kol.id.toString() // Ensure ID is a string
+      })) : [];
+      setKols(formattedKols);
     } catch (error) {
       console.error('Error fetching KOLs:', error);
       showAlert('Error fetching KOLs', 'error');
@@ -170,7 +174,7 @@ export default function KOLTracker() {
         body: JSON.stringify({ ...newKol, avatar })
       });
       const data = await response.json();
-      setKols(prevKols => [...prevKols, data]);
+      setKols(prevKols => [...prevKols, { ...data, id: data.id.toString() }]);
       setNewKol({ name: '', avatar: '' });
       showAlert('KOL created successfully', 'success');
     } catch (error) {
