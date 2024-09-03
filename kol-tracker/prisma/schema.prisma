@@ -12,9 +12,10 @@ model Post {
   id            Int      @id @default(autoincrement())
   url           String
   kol_id        Int
-  creation_date DateTime @db.Timestamp
+  post_creation_date DateTime @db.Timestamp
   counts        Json
   kol           Kol      @relation(fields: [kol_id], references: [id])
+  last_auto_update DateTime? @db.Timestamp
 }
 
 model Kol {

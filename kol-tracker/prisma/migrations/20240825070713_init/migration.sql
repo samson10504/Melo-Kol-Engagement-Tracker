@@ -3,7 +3,7 @@ CREATE TABLE "Post" (
     "id" SERIAL NOT NULL,
     "url" TEXT NOT NULL,
     "kol_id" INTEGER NOT NULL,
-    "creation_date" TIMESTAMP(3) NOT NULL,
+    "post_creation_date" TIMESTAMP(3) NOT NULL,
     "counts" JSONB NOT NULL,
 
     CONSTRAINT "Post_pkey" PRIMARY KEY ("id")

@@ -226,7 +226,7 @@ export default function KOLTracker() {
               body: JSON.stringify({
                 url: post.url,
                 kol_id: newKolId, // Use kol_id instead of kolId
-                creation_date: post.creation_date,
+                post_creation_date: post.post_creation_date,
                 counts: post.counts // Don't stringify counts here
               })
             });
@@ -258,8 +258,8 @@ export default function KOLTracker() {
   const filteredPosts = useMemo(() => {
     return (Array.isArray(posts) ? posts : []).filter(post => {
       const kolMatch = selectedKol === 'all' || post.kol_id.toString() === selectedKol;
-      const dateMatch = (!dateFilter.start || new Date(post.creation_date) >= new Date(dateFilter.start)) &&
-                        (!dateFilter.end || new Date(post.creation_date) <= new Date(dateFilter.end));
+      const dateMatch = (!dateFilter.start || new Date(post.post_creation_date) >= new Date(dateFilter.start)) &&
+                        (!dateFilter.end || new Date(post.post_creation_date) <= new Date(dateFilter.end));
       return kolMatch && dateMatch;
     });
   }, [posts, selectedKol, dateFilter]);

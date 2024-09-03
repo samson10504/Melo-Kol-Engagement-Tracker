@@ -23,11 +23,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       res.status(500).json({ error: 'Error fetching post' });
     }
   } else if (req.method === 'PUT') {
-    const { counts } = req.body;
+    const { counts, post_creation_date } = req.body;
     try {
       const { rows } = await sql`
         UPDATE posts
-        SET counts = ${JSON.stringify(counts)}
+        SET counts = ${JSON.stringify(counts)},
+            post_creation_date = ${post_creation_date}
         WHERE id = ${postId}
         RETURNING *
       `;

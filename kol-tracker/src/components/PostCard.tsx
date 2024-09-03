@@ -23,7 +23,7 @@ interface Post {
   kol_id: string;
   kol_name?: string;
   url: string;
-  creation_date: string;
+  post_creation_date: string;
   counts: Count[];
   lastFetch?: {
     date: string;
@@ -164,7 +164,7 @@ const PostCard: React.FC<PostCardProps> = ({ post, kols, tokenSettings, onUpdate
             </Avatar>
             <div>
               <CardTitle>{kolName}</CardTitle>
-              <p className="text-sm text-muted-foreground">Post Created: {new Date(post.creation_date).toLocaleString()}</p>
+              <p className="text-sm text-muted-foreground">Post Created: {new Date(post.post_creation_date).toLocaleString()}</p>
             </div>
           </div>
           <Badge variant="secondary">

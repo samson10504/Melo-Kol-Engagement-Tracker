@@ -60,7 +60,7 @@ async function handleCreateMultiple(req: NextApiRequest, res: NextApiResponse) {
     for (const post of posts) {
       const { url, kol_id } = post;
       const { rows } = await sql`
-        INSERT INTO posts (url, kol_id, creation_date, counts)
+        INSERT INTO posts (url, kol_id, post_creation_date, counts)
         VALUES (${url}, ${parseInt(kol_id, 10)}, ${new Date().toISOString()}, '[]'::jsonb)
         RETURNING *
       `;
