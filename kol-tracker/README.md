@@ -46,6 +46,6 @@ CREATE TABLE posts (
   id SERIAL PRIMARY KEY,
   url VARCHAR(255) NOT NULL,
   kol_id INTEGER REFERENCES kols(id),
-  creation_date TIMESTAMP NOT NULL,
+  post_creation_date TIMESTAMP NOT NULL,
   counts JSONB
 );

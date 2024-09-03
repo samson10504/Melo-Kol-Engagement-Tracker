@@ -17,7 +17,7 @@ export default function Analytics({ posts, kols, tokenSettings }: AnalyticsProps
     return posts.map(post => {
       const latestCount = post.counts && post.counts.length > 0 ? post.counts[post.counts.length - 1] : null;
       return {
-        date: new Date(post.creation_date).getTime(),
+        date: new Date(post.post_creation_date).getTime(),
         likes: latestCount ? latestCount.likes : 0,
         comments: latestCount ? latestCount.comments : 0,
         kolName: getKolName(post.kol_id, kols),

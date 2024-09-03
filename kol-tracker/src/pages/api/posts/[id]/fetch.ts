@@ -185,7 +185,7 @@ async function fetchAndUpdatePost(post: any) {
   const { rows: updatedRows } = await sql`
     UPDATE posts
     SET counts = ${JSON.stringify(updatedCounts)},
-        creation_date = COALESCE(${matchingPost.timestamp}, posts.creation_date)
+        post_creation_date = COALESCE(${matchingPost.timestamp}, posts.post_creation_date)
     WHERE id = ${post.id}
     RETURNING *
   `;
@@ -194,7 +194,7 @@ async function fetchAndUpdatePost(post: any) {
   return updatedRows[0];
 }
 
-async function updatePostInDatabase(post: any, item: InstagramPost) {
+export async function updatePostInDatabase(post: any, item: InstagramPost) {
   const currentDate = new Date().toLocaleString('en-HK', { timeZone: 'Asia/Hong_Kong' });
   const updatedCounts = [
     ...(Array.isArray(post.counts) ? post.counts : []),
@@ -211,7 +211,7 @@ async function updatePostInDatabase(post: any, item: InstagramPost) {
   const { rows: updatedRows } = await sql`
     UPDATE posts
     SET counts = ${JSON.stringify(updatedCounts)},
-        creation_date = COALESCE(${item.timestamp}, posts.creation_date)
+        post_creation_date = COALESCE(${item.timestamp}, posts.post_creation_date)
     WHERE id = ${post.id}
     RETURNING *
   `;

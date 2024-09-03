@@ -4,7 +4,7 @@ export const mockPosts = [
   { 
     url: 'https://www.instagram.com/p/CvuIOtUhCJ7', 
     kolId: 1, 
-    creation_date: '2023-07-26T10:30:00.000Z', 
+    post_creation_date: '2023-07-26T10:30:00.000Z', 
     counts: [
       { date: '2023-08-02T15:45:00.000Z', likes: 1000, comments: 50 },
       { date: '2023-08-26T09:20:00.000Z', likes: 1500, comments: 75 }
@@ -13,7 +13,7 @@ export const mockPosts = [
   { 
     url: 'https://www.instagram.com/p/Cvwrwh3hTnc', 
     kolId: 2, 
-    creation_date: '2023-07-27T14:20:00.000Z', 
+    post_creation_date: '2023-07-27T14:20:00.000Z', 
     counts: [
       { date: '2023-08-03T11:30:00.000Z', likes: 800, comments: 42 },
       { date: '2023-08-27T16:15:00.000Z', likes: 1200, comments: 61 }
@@ -22,7 +22,7 @@ export const mockPosts = [
   { 
     url: 'https://www.instagram.com/p/C8McNC9yizs', 
     kolId: 3, 
-    creation_date: '2023-07-28T08:45:00.000Z', 
+    post_creation_date: '2023-07-28T08:45:00.000Z', 
     counts: [
       { date: '2023-08-04T13:10:00.000Z', likes: 1500, comments: 90 },
       { date: '2023-08-28T10:55:00.000Z', likes: 1800, comments: 105 }
@@ -31,7 +31,7 @@ export const mockPosts = [
   { 
     url: 'https://www.instagram.com/p/C9jIxy1BtOk', 
     kolId: 4, 
-    creation_date: '2023-07-29T17:30:00.000Z', 
+    post_creation_date: '2023-07-29T17:30:00.000Z', 
     counts: [
       { date: '2023-08-05T09:40:00.000Z', likes: 700, comments: 34 },
       { date: '2023-08-29T14:25:00.000Z', likes: 950, comments: 46 }
@@ -40,7 +40,7 @@ export const mockPosts = [
   { 
     url: 'https://www.instagram.com/p/C-4ifS5BA__', 
     kolId: 5, 
-    creation_date: '2023-07-30T12:15:00.000Z', 
+    post_creation_date: '2023-07-30T12:15:00.000Z', 
     counts: [
       { date: '2023-08-06T16:50:00.000Z', likes: 1100, comments: 56 },
       { date: '2023-08-30T11:35:00.000Z', likes: 1350, comments: 67 }

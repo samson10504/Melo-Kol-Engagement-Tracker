@@ -6,7 +6,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     if (req.method === 'GET') {
       const { rows } = await sql`SELECT * FROM kols`;
-      res.status(200).json(rows);
+      const formattedRows = rows.map(row => ({
+        ...row,
+        id: row.id.toString() // Ensure ID is a string
+      }));
+      res.status(200).json(formattedRows);
     } else if (req.method === 'POST') {
       const { name, avatar } = req.body;
       const { rows } = await sql`

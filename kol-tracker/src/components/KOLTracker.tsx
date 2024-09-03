@@ -24,7 +24,7 @@ export default function KOLTracker() {
   const [posts, setPosts] = useState<any[]>([]);
   const [kols, setKols] = useState<any[]>([]);
   const [tokenSettings, setTokenSettings] = useState({ tokensPerLike: 1, tokensPerComment: 5 });
-  const [newPost, setNewPost] = useState({ url: '', kolId: '' });
+  const [newPosts, setNewPosts] = useState<{ url: string; kolId: string }[]>([{ url: '', kolId: '' }]);
   const [newKol, setNewKol] = useState({ name: '', avatar: '' });
   const [alert, setAlert] = useState<{ message: string; type: string } | null>(null);
   const [selectedKol, setSelectedKol] = useState('all');
@@ -63,7 +63,11 @@ export default function KOLTracker() {
       const response = await fetch('/api/kols');
       const data = await response.json();
       console.log('KOLs API response:', data);
-      setKols(Array.isArray(data) ? data : []);
+      const formattedKols = Array.isArray(data) ? data.map(kol => ({
+        ...kol,
+        id: kol.id.toString() // Ensure ID is a string
+      })) : [];
+      setKols(formattedKols);
     } catch (error) {
       console.error('Error fetching KOLs:', error);
       showAlert('Error fetching KOLs', 'error');
@@ -73,10 +77,10 @@ export default function KOLTracker() {
     }
   };
 
-  const handleCreatePost = async (e: React.FormEvent) => {
+  const handleCreatePosts = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newPost.url.trim() || !newPost.kolId) {
-      showAlert('Please fill in all fields', 'error');
+    if (newPosts.some(post => !post.url.trim() || !post.kolId || isNaN(parseInt(post.kolId, 10)))) {
+      showAlert('Please fill in all fields with valid values for all posts', 'error');
       return;
     }
     setIsLoading(true);
@@ -84,29 +88,33 @@ export default function KOLTracker() {
       const response = await fetch('/api/posts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          url: newPost.url,
-          kol_id: parseInt(newPost.kolId, 10)
+        body: JSON.stringify({ 
+          posts: newPosts.map(post => ({
+            url: post.url,
+            kol_id: parseInt(post.kolId, 10)
+          }))
         })
       });
-      const data = await response.json();
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(`HTTP error! status: ${response.status}, message: ${errorData.error || 'Unknown error'}`);
+      }
+
+      const createdPosts = await response.json();
+      console.log('Response from server:', createdPosts);
       
-      // Fetch initial post data
-      const fetchResponse = await fetch(`/api/posts/${data.id}/fetch`);
-      const fetchedPost = await fetchResponse.json();
-      
-      // Update the creation_date with the fetched timestamp
-      const updatedPost = {
-        ...fetchedPost,
-        creation_date: fetchedPost.creation_date || new Date().toISOString()
-      };
-      
-      setPosts(prevPosts => [...prevPosts, updatedPost]);
-      setNewPost({ url: '', kolId: '' });
-      showAlert('Post created and fetched successfully', 'success');
+      if (Array.isArray(createdPosts)) {
+        setPosts(prevPosts => [...prevPosts, ...createdPosts]);
+        setNewPosts([{ url: '', kolId: '' }]);
+        showAlert('Posts created and updated successfully', 'success');
+      } else {
+        console.error('Unexpected response format:', createdPosts);
+        showAlert('Unexpected response format from server', 'error');
+      }
     } catch (error) {
-      console.error('Error creating post:', error);
-      showAlert('Error creating post', 'error');
+      console.error('Error creating posts:', error);
+      showAlert(`Error creating posts: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
     } finally {
       setIsLoading(false);
     }
@@ -166,7 +174,7 @@ export default function KOLTracker() {
         body: JSON.stringify({ ...newKol, avatar })
       });
       const data = await response.json();
-      setKols(prevKols => [...prevKols, data]);
+      setKols(prevKols => [...prevKols, { ...data, id: data.id.toString() }]);
       setNewKol({ name: '', avatar: '' });
       showAlert('KOL created successfully', 'success');
     } catch (error) {
@@ -218,7 +226,7 @@ export default function KOLTracker() {
               body: JSON.stringify({
                 url: post.url,
                 kol_id: newKolId, // Use kol_id instead of kolId
-                creation_date: post.creation_date,
+                post_creation_date: post.post_creation_date,
                 counts: post.counts // Don't stringify counts here
               })
             });
@@ -250,8 +258,8 @@ export default function KOLTracker() {
   const filteredPosts = useMemo(() => {
     return (Array.isArray(posts) ? posts : []).filter(post => {
       const kolMatch = selectedKol === 'all' || post.kol_id.toString() === selectedKol;
-      const dateMatch = (!dateFilter.start || new Date(post.creation_date) >= new Date(dateFilter.start)) &&
-                        (!dateFilter.end || new Date(post.creation_date) <= new Date(dateFilter.end));
+      const dateMatch = (!dateFilter.start || new Date(post.post_creation_date) >= new Date(dateFilter.start)) &&
+                        (!dateFilter.end || new Date(post.post_creation_date) <= new Date(dateFilter.end));
       return kolMatch && dateMatch;
     });
   }, [posts, selectedKol, dateFilter]);
@@ -292,9 +300,11 @@ export default function KOLTracker() {
       console.log('Fetched updated post:', updatedPost);
       setPosts(prevPosts => prevPosts.map(post => post.id === updatedPost.id ? updatedPost : post));
       showAlert(`Post ${postId} updated successfully`, 'success');
+      return updatedPost; // Return the updated post
     } catch (error) {
       console.error(`Error updating post ${postId}:`, error);
       showAlert(`Error updating post ${postId}: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
+      return null; // Return null in case of an error
     } finally {
       setIsLoading(false);
     }
@@ -464,7 +474,7 @@ export default function KOLTracker() {
       <Tabs defaultValue="posts" className="space-y-4">
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="posts">Posts</TabsTrigger>
-          <TabsTrigger value="create">Create Post</TabsTrigger>
+          <TabsTrigger value="create">Track Post</TabsTrigger>
           <TabsTrigger value="kols">Manage KOLs</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
         </TabsList>
@@ -498,38 +508,71 @@ export default function KOLTracker() {
             <CardHeader>
               <CardTitle className="flex items-center">
                 <PlusCircle className="mr-2 h-5 w-5" />
-                Create New Post
+                Track New Post
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleCreatePost} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="postUrl">Instagram Post URL</Label>
-                  <Input
-                    id="postUrl"
-                    type="text"
-                    placeholder="https://www.instagram.com/p/..."
-                    value={newPost.url}
-                    onChange={(e) => setNewPost({ ...newPost, url: e.target.value })}
-                  />
+              <form onSubmit={handleCreatePosts} className="space-y-4">
+                {newPosts.map((post, index) => (
+                  <div key={index} className="space-y-4 border p-4 rounded">
+                    <div className="space-y-2">
+                      <Label htmlFor={`postUrl-${index}`}>Instagram Post URL</Label>
+                      <Input
+                        id={`postUrl-${index}`}
+                        type="text"
+                        placeholder="https://www.instagram.com/p/..."
+                        value={post.url}
+                        onChange={(e) => {
+                          const updatedPosts = [...newPosts];
+                          updatedPosts[index].url = e.target.value;
+                          setNewPosts(updatedPosts);
+                        }}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor={`kolId-${index}`}>Select KOL</Label>
+                      <Select
+                        value={post.kolId}
+                        onValueChange={(value) => {
+                          const updatedPosts = [...newPosts];
+                          updatedPosts[index].kolId = value;
+                          setNewPosts(updatedPosts);
+                        }}
+                      >
+                        <SelectTrigger id={`kolId-${index}`}>
+                          <SelectValue placeholder="Select a KOL" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {kols.map(kol => (
+                            <SelectItem key={kol.id} value={kol.id.toString()}>{kol.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {index > 0 && (
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        onClick={() => setNewPosts(posts => posts.filter((_, i) => i !== index))}
+                      >
+                        Remove Post
+                      </Button>
+                    )}
+                  </div>
+                ))}
+                <div className="flex space-x-4 mt-4">
+                  <Button
+                    type="button"
+                    className="flex-1"
+                    onClick={() => setNewPosts(posts => [...posts, { url: '', kolId: '' }])}
+                  >
+                    Add Another Post
+                  </Button>
+                  <Button type="submit" className="flex-1" disabled={isLoading}>
+                    {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
+                    Track Posts
+                  </Button>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="kolId">Select KOL</Label>
-                  <Select value={newPost.kolId} onValueChange={(value) => setNewPost({ ...newPost, kolId: value })}>
-                    <SelectTrigger id="kolId">
-                      <SelectValue placeholder="Select a KOL" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {kols.map(kol => (
-                        <SelectItem key={kol.id} value={kol.id.toString()}>{kol.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <Button type="submit" disabled={isLoading}>
-                  {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
-                  Create Post
-                </Button>
               </form>
             </CardContent>
           </Card>

@@ -8,8 +8,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Trash2, Plus, Minus, RefreshCw, ThumbsUp, MessageCircle, Coins, Calendar } from 'lucide-react';
-import { calculateTokens, formatDate, getKolName } from '@/lib/utils';
+import { calculateTokens, formatDate } from '@/lib/utils';
 
 interface Count {
   date: string;
@@ -19,10 +20,10 @@ interface Count {
 
 interface Post {
   id: string;
-  kol_id: number;
+  kol_id: string;
   kol_name?: string;
   url: string;
-  creation_date: string;
+  post_creation_date: string;
   counts: Count[];
   lastFetch?: {
     date: string;
@@ -35,6 +36,7 @@ interface Post {
 interface KOL {
   id: string;
   name: string;
+  avatar: string;
 }
 
 interface TokenSettings {
@@ -132,13 +134,38 @@ const PostCard: React.FC<PostCardProps> = ({ post, kols, tokenSettings, onUpdate
     tokenSettings.tokensPerComment
   );
 
+  console.log('Post KOL ID:', post.kol_id);
+  console.log('KOLs:', kols);
+
+  const kol = kols.find(k => k.id === post.kol_id.toString());
+  console.log('Found KOL:', kol);
+
+  const kolName = kol ? kol.name : 'Unknown KOL';
+  const kolAvatar = kol ? kol.avatar : '/default-avatar.png';
+
+  console.log('KOL Name:', kolName);
+  console.log('KOL Avatar:', kolAvatar);
+
   return (
     <Card>
       <CardHeader>
         <div className="flex justify-between items-center">
-          <div>
-            <CardTitle>{post.kol_name || getKolName(post.kol_id, kols) || 'Unknown KOL'}</CardTitle>
-            <p className="text-sm text-muted-foreground">Post Created: {new Date(post.creation_date).toLocaleString()}</p>
+          <div className="flex items-center space-x-2">
+            <Avatar>
+              <AvatarImage 
+                src={kolAvatar} 
+                alt={kolName} 
+                onError={(e) => {
+                  console.error('Error loading avatar:', kolAvatar);
+                  e.currentTarget.src = '/default-avatar.png';
+                }}
+              />
+              <AvatarFallback>{kolName.charAt(0)}</AvatarFallback>
+            </Avatar>
+            <div>
+              <CardTitle>{kolName}</CardTitle>
+              <p className="text-sm text-muted-foreground">Post Created: {new Date(post.post_creation_date).toLocaleString()}</p>
+            </div>
           </div>
           <Badge variant="secondary">
             {totalTokens} tokens
